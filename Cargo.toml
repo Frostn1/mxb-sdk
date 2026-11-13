@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/content",
+    "crates/mxb-core",
+    "crates/mxb-game",
+    "crates/mxb-extensions",
+    "crates/mxb-plugins",
+    "crates/mxb-mcp",
+    "crates/mxb-sdk",
+]

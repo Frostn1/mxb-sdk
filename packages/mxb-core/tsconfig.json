@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "moduleDetection": "auto",
+    "paths": { "node:child_process": ["./src/node-child-process.d.ts"] }
+  },
+  "include": ["src"]
+}

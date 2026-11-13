@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "moduleDetection": "auto",
+    "paths": {
+      "node:fs/promises": ["./src/node-fs-promises.d.ts"],
+      "node:path": ["./src/node-path.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

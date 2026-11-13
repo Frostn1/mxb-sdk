@@ -1,0 +1,22 @@
+{
+  "name": "mxb-sdk-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/mxb-core",
+    "packages/mxb-game",
+    "packages/mxb-extensions",
+    "packages/mxb-plugins",
+    "packages/mxb-mcp",
+    "packages/mxb-sdk"
+  ],
+  "scripts": {
+    "test": "bun test packages",
+    "typecheck": "bun run --filter '*' typecheck",
+    "codegen:check": "node scripts/gamesdk/codegen.mjs --check"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22.0.0"
+  }
+}

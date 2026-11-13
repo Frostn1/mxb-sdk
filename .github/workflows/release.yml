@@ -1,0 +1,79 @@
+name: Release
+
+# Publishes to crates.io and npm when a version tag is pushed (v0.1.0, v1.2.0...).
+# Needs two repository secrets: CARGO_REGISTRY_TOKEN (crates.io) and NPM_TOKEN (npm, with
+# publish rights to the @mxb scope). Without them the publish steps fail and nothing is
+# published.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run only (no upload)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/leak_check.py
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+
+  crates:
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Dependencies first: a crate can only be published once the versions it names exist.
+      - name: Publish in order
+        shell: bash
+        run: |
+          set -e
+          for crate in mxb-content mxb-core mxb-plugins mxb-extensions mxb-game mxb-mcp mxb-sdk; do
+            version=$(cargo metadata --no-deps --format-version 1 | python3 -c "import json,sys; print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='$crate'))")
+            if curl -fsS -A "mxb-sdk-release" "https://crates.io/api/v1/crates/$crate/$version" >/dev/null 2>&1; then
+              echo "$crate $version is already on crates.io"
+              continue
+            fi
+            cargo publish -p "$crate" $DRY
+            # crates.io needs a moment before the next crate can depend on this one.
+            [ -z "$DRY" ] && sleep 30 || true
+          done
+
+  npm:
+    needs: crates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Publish in order
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          DRY=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          for pkg in mxb-core mxb-plugins mxb-extensions mxb-game mxb-mcp mxb-sdk; do
+            (cd "packages/$pkg" && npm run build --if-present && npm publish --access public --provenance $DRY)
+          done

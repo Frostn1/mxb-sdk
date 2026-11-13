@@ -1,0 +1,27 @@
+{
+  "name": "@mxb/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mxb/core": "workspace:*",
+    "@mxb/extensions": "workspace:*",
+    "@mxb/game": "workspace:*",
+    "@mxb/mcp": "workspace:*",
+    "@mxb/plugins": "workspace:*"
+  }
+}

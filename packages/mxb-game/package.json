@@ -1,0 +1,36 @@
+{
+  "name": "@mxb/game",
+  "version": "1.1.0",
+  "description": "Typed client for MXB App's local game endpoint.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "mxb-game-mcp": "./bin/mxb-game-mcp.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "samples",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@mxb/mcp": "workspace:*"
+  }
+}

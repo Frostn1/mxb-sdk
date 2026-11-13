@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "examples.lap-timer",
+  "name": "Lap Timer",
+  "version": "1.0.0",
+  "author": "Frost",
+  "description": "A live lap timer in MXB App while you ride: the current lap, last and best, splits, and every lap this session with its top speed.",
+  "homepage": "https://github.com/Frostn1/mxb-app/blob/main/docs/sdk/game.md",
+  "permissions": ["game.read"],
+  "categories": ["tabs", "game"],
+  "tags": ["laps", "timer", "telemetry", "live"],
+  "contributes": {
+    "views": [{ "id": "timer", "title": "Lap Timer", "entry": "view/index.html" }]
+  }
+}

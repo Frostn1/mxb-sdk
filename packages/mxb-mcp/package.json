@@ -1,0 +1,25 @@
+{
+  "name": "@mxb/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bin/mxb-mcp.mjs": "./bin/mxb-mcp.mjs"
+  },
+  "types": "./src/index.ts",
+  "bin": {
+    "mxb-mcp": "./bin/mxb-mcp.mjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  }
+}

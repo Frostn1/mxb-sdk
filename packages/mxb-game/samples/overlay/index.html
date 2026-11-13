@@ -1,0 +1,310 @@
+<!doctype html>
+<!--
+  MX Bikes stream overlay, on MXB App's Game SDK.
+
+  OBS: add a Browser source, tick "Local file", pick this file, and set the URL's query in
+  the source's "URL" field instead if your OBS version asks for a URL:
+    file:///C:/path/to/index.html?token=YOUR_TOKEN
+  Size it 1920x1080. The background is transparent.
+
+  Query parameters:
+    token   from MXB App -> Settings -> Game SDK (required)
+    url     the endpoint, default http://127.0.0.1:47820
+    rows    how many riders the tower shows, default 10
+    units   kmh (default) or mph
+    bg      a backdrop colour (hex, no #) for previewing outside OBS
+
+  One file on purpose: no build step, no network beyond the app on this PC. The client code
+  below is the same protocol as @mxb/game's GameSdk.stream(), written out so it can be read.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MX Bikes overlay</title>
+<style>
+  :root {
+    --panel: rgba(12, 13, 16, 0.82);
+    --line: rgba(255, 255, 255, 0.08);
+    --text: #f4f4f5;
+    --muted: #9ca3af;
+    --accent: #ff7a1a;
+    --good: #34d399;
+    --bad: #f87171;
+    --purple: #c084fc;
+    font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif;
+  }
+  html, body { margin: 0; background: transparent; color: var(--text); }
+  body { width: 1920px; height: 1080px; position: relative; overflow: hidden; }
+  .panel { background: var(--panel); border-radius: 6px; }
+  .muted { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* The timing tower, top left. */
+  #tower { position: absolute; top: 40px; left: 40px; width: 360px; padding: 10px 0; }
+  #tower header { display: flex; justify-content: space-between; padding: 0 14px 8px; font-size: 15px;
+    letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .row { display: grid; grid-template-columns: 34px 46px 1fr 92px; align-items: center; height: 32px;
+    padding: 0 14px; font-size: 19px; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row .pos { color: var(--muted); }
+  .row .rn { font-weight: 700; }
+  .row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .gap { text-align: right; color: var(--muted); }
+  .row.me { background: var(--accent); color: #111; }
+  .row.me .pos, .row.me .gap { color: #111; }
+  .row.gapline { height: 10px; }
+
+  /* The dash, bottom centre. */
+  #dash { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 760px;
+    display: grid; grid-template-columns: 210px 1fr 210px; gap: 0; }
+  #dash > div { padding: 14px 18px; }
+  #dash > div + div { border-left: 1px solid var(--line); }
+  .speed { font-size: 84px; line-height: 0.9; font-weight: 700; }
+  .unit { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .gear { font-size: 84px; line-height: 0.9; font-weight: 700; text-align: center; }
+  .rpm { height: 10px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+  .rpm > i { display: block; height: 100%; width: 0; background: var(--text); }
+  .rpm.shift > i { background: var(--accent); }
+  .rpm.limit > i { background: var(--bad); }
+  .pedals { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .pedal { width: 12px; height: 44px; background: rgba(255,255,255,0.1); border-radius: 2px; position: relative; overflow: hidden; }
+  .pedal > i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; }
+  .pedal.thr > i { background: var(--good); }
+  .pedal.brk > i { background: var(--bad); }
+  .laprow { display: flex; justify-content: space-between; font-size: 18px; margin-top: 4px; }
+  .laptime { font-size: 40px; font-weight: 700; }
+  .delta.up { color: var(--bad); }
+  .delta.down { color: var(--good); }
+
+  /* Place and laps, top right. */
+  #place { position: absolute; top: 40px; right: 40px; padding: 12px 20px; text-align: right; min-width: 200px; }
+  #place .big { font-size: 64px; font-weight: 700; line-height: 1; }
+  #place .sub { font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px; }
+
+  /* What just happened, bottom right. */
+  #ticker { position: absolute; right: 40px; bottom: 40px; width: 380px; display: flex; flex-direction: column; gap: 6px; }
+  .tick { padding: 9px 14px; font-size: 18px; display: flex; justify-content: space-between; gap: 10px; }
+  .tick .k { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); align-self: center; }
+  .tick.pb .v { color: var(--good); }
+  .tick.ob .v { color: var(--purple); }
+
+  #status { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); padding: 8px 16px; font-size: 16px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="status" class="panel muted">Connecting to MXB App…</div>
+
+  <section id="tower" class="panel" hidden>
+    <header><span id="track"></span><span id="phase" class="muted"></span></header>
+    <div id="rows"></div>
+  </section>
+
+  <section id="place" class="panel" hidden>
+    <div class="big num" id="pos">–</div>
+    <div class="sub muted" id="laps"></div>
+  </section>
+
+  <section id="dash" class="panel" hidden>
+    <div>
+      <div class="speed num" id="speed">0</div>
+      <div class="unit muted" id="unit">km/h</div>
+      <div class="rpm" id="rpmbar"><i></i></div>
+      <div class="unit muted num" id="rpm" style="margin-top:6px">0 rpm</div>
+    </div>
+    <div>
+      <div class="laprow muted"><span id="lapno">Lap –</span><span class="num" id="split"></span></div>
+      <div class="laptime num" id="lapnow">–:––.–––</div>
+      <div class="laprow"><span class="muted">Last</span><span class="num" id="last">–</span></div>
+      <div class="laprow"><span class="muted">Best</span><span class="num" id="best">–</span></div>
+    </div>
+    <div>
+      <div class="gear num" id="gear">N</div>
+      <div class="pedals">
+        <div class="pedal thr"><i id="thr"></i></div>
+        <div class="pedal brk"><i id="brk"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ticker"></section>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const token = q.get("token") || "";
+  const base = (q.get("url") || "http://127.0.0.1:47820").replace(/\/+$/, "");
+  const ROWS = Math.max(3, Math.min(20, Number(q.get("rows")) || 10));
+  const MPH = q.get("units") === "mph";
+  const $ = (id) => document.getElementById(id);
+  // A backdrop for previewing in a browser; OBS wants it transparent (the default).
+  const bg = q.get("bg");
+  if (bg && /^[0-9a-f]{3,8}$/i.test(bg)) document.body.style.background = "#" + bg;
+
+  const fmt = (ms) => {
+    if (!ms || ms <= 0) return "–:––.–––";
+    const m = Math.floor(ms / 60000), s = Math.floor(ms / 1000) % 60;
+    return `${m}:${String(s).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
+  };
+  const gapText = (r, leader) => {
+    if (r.place === 1) return "Leader";
+    if (r.gapLaps) return `+${r.gapLaps} lap${r.gapLaps > 1 ? "s" : ""}`;
+    if (r.gapMs != null) return `+${(r.gapMs / 1000).toFixed(3)}`;
+    return "";
+  };
+
+  let latest = null;
+
+  function cell(cls, text) {
+    const d = document.createElement("div");
+    d.className = cls;
+    d.textContent = text;
+    return d;
+  }
+
+  function drawTower(s) {
+    // Everyone the timing screen lists, as the game shows them.
+    const riders = s.riders.filter((r) => r.place != null);
+    const rows = $("rows");
+    rows.replaceChildren();
+    if (!riders.length) return;
+    // The top of the field, and the player with their neighbours if they're further back.
+    const meIdx = riders.findIndex((r) => r.local);
+    let pick = riders.slice(0, ROWS);
+    if (meIdx >= ROWS) {
+      const around = riders.slice(Math.max(ROWS - 3, meIdx - 1), meIdx + 2);
+      pick = riders.slice(0, ROWS - around.length).concat([null], around);
+    }
+    for (const r of pick) {
+      if (r === null) {
+        rows.append(cell("row gapline", ""));
+        continue;
+      }
+      const row = document.createElement("div");
+      row.className = "row" + (r.local ? " me" : "");
+      row.append(cell("pos num", String(r.place)), cell("rn num", r.raceNum ? `#${r.raceNum}` : ""),
+                 cell("nm", r.name || "—"), cell("gap num", gapText(r)));
+      rows.append(row);
+    }
+  }
+
+  function draw(s) {
+    latest = s;
+    const on = s.source !== "none" && s.session;
+    $("status").hidden = !!on;
+    if (!on) $("status").textContent = "Waiting for MX Bikes…";
+    for (const id of ["tower", "place", "dash"]) $(id).hidden = !on;
+    if (!on) return;
+
+    $("track").textContent = s.session.trackName;
+    $("phase").textContent = s.session.phase === "unknown" ? s.session.eventType : s.session.phase;
+    drawTower(s);
+
+    const me = s.riders.find((r) => r.local);
+    const field = s.riders.filter((r) => r.place != null).length;
+    $("pos").textContent = me && me.place ? `P${me.place}` : "–";
+    const lapNo = s.local ? s.local.lap.completed + 1 : me && me.laps != null ? me.laps + 1 : null;
+    $("laps").textContent = me && me.place ? `of ${field}` + (lapNo ? ` · lap ${lapNo}` : "") : s.session.trackName;
+
+    const l = s.local;
+    $("dash").hidden = !l;
+    if (!l) return;
+    const v = MPH ? l.speedKmh / 1.609344 : l.speedKmh;
+    $("speed").textContent = Math.round(v);
+    $("unit").textContent = MPH ? "mph" : "km/h";
+    $("gear").textContent = l.gear === 0 ? "N" : String(l.gear);
+    $("rpm").textContent = `${l.rpm.toLocaleString("en-US")} rpm`;
+    const max = l.bike.limiterRpm || l.bike.maxRpm || 13000;
+    const bar = $("rpmbar");
+    bar.firstElementChild.style.width = `${Math.min(100, (l.rpm / max) * 100)}%`;
+    bar.className = "rpm" + (l.rpm >= max * 0.98 ? " limit" : l.bike.shiftRpm && l.rpm >= l.bike.shiftRpm ? " shift" : "");
+    $("thr").style.height = `${Math.round(l.throttle * 100)}%`;
+    $("brk").style.height = `${Math.round(Math.max(l.frontBrake, l.rearBrake) * 100)}%`;
+
+    $("lapno").textContent = `Lap ${l.lap.completed + 1}`;
+    $("lapnow").textContent = fmt(l.lap.currentMs);
+    const sp = l.lap.splitsMs;
+    $("split").textContent = sp.length ? `S${sp.length} ${fmt(sp[sp.length - 1])}` : "";
+    $("last").textContent = fmt(l.lap.lastMs);
+    $("best").textContent = fmt(l.lap.bestMs);
+  }
+
+  function ticker(kind, text, value, cls) {
+    const t = document.createElement("div");
+    t.className = "tick panel" + (cls ? " " + cls : "");
+    const left = document.createElement("span");
+    left.textContent = text;
+    const right = document.createElement("span");
+    right.className = "v num";
+    right.textContent = value;
+    const k = document.createElement("span");
+    k.className = "k";
+    k.textContent = kind;
+    const wrap = document.createElement("span");
+    wrap.append(left);
+    t.append(k, wrap, right);
+    const box = $("ticker");
+    box.append(t);
+    while (box.children.length > 5) box.firstElementChild.remove();
+    setTimeout(() => t.remove(), 12000);
+  }
+
+  const nameOf = (num) => {
+    const r = latest && latest.riders.find((x) => x.raceNum === num);
+    return r ? r.name || `#${num}` : `#${num}`;
+  };
+
+  function onEvent(e) {
+    switch (e.type) {
+      case "lap":
+        if (e.local) {
+          ticker("Lap " + e.lap, e.valid ? "Your lap" : "Your lap (invalid)", fmt(e.timeMs), e.best ? "pb" : "");
+        } else if (e.overallBest) {
+          ticker("Fastest", nameOf(e.raceNum), fmt(e.timeMs), "ob");
+        }
+        break;
+      case "overtake":
+        if (e.local) ticker("Pass", `Up to P${e.place}`, `#${(e.passed || []).join(", #")}`);
+        else if (e.place <= 3) ticker("Pass", `${nameOf(e.raceNum)} to P${e.place}`, "");
+        break;
+      case "holeshot":
+        ticker("Holeshot", e.name || nameOf(e.raceNum), "");
+        break;
+      case "crash":
+        if (e.local) ticker("Crash", "Down", "");
+        else ticker("Crash", nameOf(e.raceNum), "");
+        break;
+      case "session_start":
+        ticker("Session", e.phase, "");
+        break;
+      case "communication":
+        ticker(e.what, nameOf(e.raceNum), e.seconds ? `+${e.seconds}s` : "");
+        break;
+    }
+  }
+
+  if (!token) {
+    $("status").textContent = "Add ?token=… from MXB App → Settings → Game SDK";
+    return;
+  }
+  let retry = 500;
+  function connect() {
+    const ws = new WebSocket(`${base.replace(/^http/, "ws")}/v1/stream?token=${encodeURIComponent(token)}&rate=30`);
+    ws.onopen = () => (retry = 500);
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      if (msg.type === "state") draw(msg.data);
+      else if (msg.type === "event") onEvent(msg.data);
+    };
+    ws.onclose = () => {
+      $("status").hidden = false;
+      $("status").textContent = "Waiting for MXB App… (is the Game SDK's local API on?)";
+      setTimeout(connect, retry);
+      retry = Math.min(retry * 2, 8000);
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

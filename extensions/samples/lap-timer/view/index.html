@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header><h1>Lap Timer</h1><span id="where" class="muted"></span></header>
+    <p id="idle" class="muted">Waiting for MX Bikes. Laps show here as you ride.</p>
+    <section id="live" hidden>
+      <div class="now">
+        <div><div class="label">Lap <span id="lapno"></span></div><div id="current" class="huge num"></div></div>
+        <div><div class="label">Last</div><div id="last" class="big num"></div><div id="delta" class="num"></div></div>
+        <div><div class="label">Best</div><div id="best" class="big num"></div></div>
+        <div><div class="label">Speed</div><div id="speed" class="big num"></div></div>
+      </div>
+      <div id="splits" class="muted num"></div>
+    </section>
+    <h2>This session</h2>
+    <table>
+      <thead><tr><th class="num">Lap</th><th class="num">Time</th><th class="num">To best</th><th class="num">Top speed</th><th></th></tr></thead>
+      <tbody id="laps"></tbody>
+    </table>
+    <script src="app.js"></script>
+  </body>
+</html>

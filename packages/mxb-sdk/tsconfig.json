@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "target": "ES2022",
+    "types": [],
+    "moduleDetection": "auto",
+    "paths": {
+      "node:child_process": ["../mxb-core/src/node-child-process.d.ts"],
+      "node:fs/promises": ["../mxb-plugins/src/node-fs-promises.d.ts"],
+      "node:path": ["../mxb-plugins/src/node-path.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

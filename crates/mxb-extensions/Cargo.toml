@@ -1,0 +1,18 @@
+[package]
+name = "mxb-extensions"
+version = "0.1.0"
+description = "Manifest validation, packing, signing, and development tools for MXB App extensions."
+edition = "2021"
+license = "MIT"
+[dependencies]
+semver = "1"
+anyhow = "1"
+base64 = "0.22"
+ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
+getrandom = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+walkdir = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+

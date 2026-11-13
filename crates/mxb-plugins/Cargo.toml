@@ -1,0 +1,13 @@
+[package]
+name = "mxb-plugins"
+version = "0.1.0"
+description = "Manifest specification and safe filesystem reader for MX Bikes game plugins."
+edition = "2021"
+license = "MIT"
+[dependencies]
+anyhow = "1"
+log = "0.4"
+mxb-core = { path = "../mxb-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+

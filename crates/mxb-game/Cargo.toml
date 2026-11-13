@@ -1,0 +1,18 @@
+[package]
+name = "mxb-game"
+version = "1.1.0"
+description = "Async Rust client and public types for MXB App's live Game SDK."
+edition = "2021"
+license = "MIT"
+[dependencies]
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time"] }
+tungstenite = { version = "0.24", default-features = false, features = ["handshake"] }
+url = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+
