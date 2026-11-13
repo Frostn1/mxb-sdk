@@ -209,12 +209,12 @@ Load it with Settings → Extensions → Developer mode → Load folder.
 
 ---
 
-## MCP
+## AI assistants (MCP)
 
-With the local API on, Settings → Game SDK shows the endpoint and token to use:
+With the local API on, Settings → Game SDK shows the line to run. For Claude Code:
 
 ```bash
-http://127.0.0.1:47820/mcp
+claude mcp add --transport http mxb-game http://127.0.0.1:47820/mcp --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
 Other clients that speak Streamable HTTP take the same URL and header. For clients that only launch
