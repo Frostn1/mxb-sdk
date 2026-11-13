@@ -1,0 +1,72 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "mxb-sdk-workspace",
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/mxb-core": {
+      "name": "@mxb/core",
+      "version": "0.1.0",
+    },
+    "packages/mxb-extensions": {
+      "name": "@mxb/extensions",
+      "version": "0.1.0",
+    },
+    "packages/mxb-game": {
+      "name": "@mxb/game",
+      "version": "1.2.0",
+      "bin": {
+        "mxb-game-mcp": "./bin/mxb-game-mcp.mjs",
+      },
+      "dependencies": {
+        "@mxb/mcp": "workspace:*",
+      },
+    },
+    "packages/mxb-mcp": {
+      "name": "@mxb/mcp",
+      "version": "0.1.0",
+      "bin": {
+        "mxb-mcp": "./bin/mxb-mcp.mjs",
+      },
+    },
+    "packages/mxb-plugins": {
+      "name": "@mxb/plugins",
+      "version": "0.1.0",
+    },
+    "packages/mxb-sdk": {
+      "name": "@mxb/sdk",
+      "version": "0.1.0",
+      "dependencies": {
+        "@mxb/core": "workspace:*",
+        "@mxb/extensions": "workspace:*",
+        "@mxb/game": "workspace:*",
+        "@mxb/mcp": "workspace:*",
+        "@mxb/plugins": "workspace:*",
+      },
+    },
+  },
+  "packages": {
+    "@mxb/core": ["@mxb/core@workspace:packages/mxb-core"],
+
+    "@mxb/extensions": ["@mxb/extensions@workspace:packages/mxb-extensions"],
+
+    "@mxb/game": ["@mxb/game@workspace:packages/mxb-game"],
+
+    "@mxb/mcp": ["@mxb/mcp@workspace:packages/mxb-mcp"],
+
+    "@mxb/plugins": ["@mxb/plugins@workspace:packages/mxb-plugins"],
+
+    "@mxb/sdk": ["@mxb/sdk@workspace:packages/mxb-sdk"],
+
+    "@types/node": ["@types/node@22.20.5", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+  }
+}

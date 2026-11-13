@@ -103,7 +103,7 @@ fn mods(args: &[String], json: bool) -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(feature = "game")]
 fn game(args: &[String], json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    use mxb_sdk::game::{types::ContentList, Client, Message, StreamOptions};
+    use mxb_sdk::game::{Client, Message, StreamOptions};
     let command = args.first().map(String::as_str).unwrap_or("help");
     let token = std::env::var("MXB_GAME_TOKEN").map_err(|_| "set MXB_GAME_TOKEN")?;
     let client = Client::builder()
@@ -115,18 +115,6 @@ fn game(args: &[String], json: bool) -> Result<(), Box<dyn std::error::Error>> {
             "hello" => print(&client.hello().await?, json),
             "state" => print(&client.state().await?, json),
             "laps" => print(&client.laps().await?, json),
-            "reload" => print(&client.reload_mods().await?, json),
-            "refresh" => {
-                let list = match required(args, 1, "list")? {
-                    "tracks" => ContentList::Tracks,
-                    "bikes" => ContentList::Bikes,
-                    "gear" => ContentList::Gear,
-                    "paints" => ContentList::Paints,
-                    "all" => ContentList::All,
-                    _ => return Err("list must be tracks, bikes, gear, paints, or all".into()),
-                };
-                print(&client.refresh(list).await?, json)
-            }
             "watch" => {
                 let mut stream = client.stream(StreamOptions::default());
                 while let Some(message) = stream.next().await {
@@ -139,7 +127,7 @@ fn game(args: &[String], json: bool) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            _ => return Err("usage: mxb game hello|state|watch|laps|reload|refresh <list>".into()),
+            _ => return Err("usage: mxb game hello|state|watch|laps".into()),
         }
         Ok::<(), Box<dyn std::error::Error>>(())
     })

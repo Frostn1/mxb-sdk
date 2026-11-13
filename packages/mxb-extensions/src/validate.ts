@@ -46,7 +46,8 @@ export function validateManifest(value: unknown): ValidationResult {
   const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
   const seen = new Set<unknown>();
   for (const permission of permissions) {
-    if (!isPermission(permission)) errors.push(`unknown permission '${String(permission)}'`);
+    if ((permission as unknown) === "game.actions") errors.push("game.actions is not available: the SDK is read-only");
+    else if (!isPermission(permission)) errors.push(`unknown permission '${String(permission)}'`);
     if (seen.has(permission)) errors.push(`permission '${String(permission)}' is listed twice`);
     seen.add(permission);
   }

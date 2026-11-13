@@ -1,9 +1,12 @@
 # SDK versions
 
-The developer packages use semantic versions independently. The game protocol is `1.1.0`; the
+The developer packages use semantic versions independently. The game protocol is `1.2.0`; the
 new core, extensions, plugins, MCP, and umbrella packages begin at `0.1.0`. During `0.x`, a breaking
 change increments the minor version. Package compatibility is recorded in the shared
 [changelog](CHANGELOG.md).
+
+Removed: game actions. The packages were never published, so they are removed before the first
+release instead of deprecated.
 
 ## Game protocol
 
@@ -44,8 +47,8 @@ This writes the TypeScript and Rust public types. CI runs
 
 ## Game compatibility
 
-| MX Bikes build | plugin API data version | game integration | feed (read) | actions | notes |
-|---|---:|---|---|---|---|
-| beta21e | 8 | 0.53+ | yes | yes | Content reload table verified on beta21e. |
-| Other builds | 8 | 0.53+ | yes | refused | The feed uses only the published plugin API; content reload is refused on unverified builds. |
-| GP Bikes and Kart Racing Pro | other game layouts | carries the data | not decoded | refused | The feed carries their data, but the app does not decode it yet. |
+| MX Bikes build | plugin API data version | game integration | feed (read) | notes |
+|---|---:|---|---|---|
+| beta21e | 8 | 0.53+ | yes | Supported through the published plugin API. |
+| Other builds | 8 | 0.53+ | yes | The feed uses only the published plugin API. |
+| GP Bikes and Kart Racing Pro | other game layouts | carries the data | not decoded | The feed carries their data, but the app does not decode it yet. |

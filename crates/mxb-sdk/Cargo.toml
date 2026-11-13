@@ -15,7 +15,7 @@ full = ["core", "game", "extensions", "plugins", "mcp"]
 
 [dependencies]
 mxb-core = { path = "../mxb-core", version = "0.1.0", optional = true }
-mxb-game = { path = "../mxb-game", version = "1.1.0", optional = true }
+mxb-game = { path = "../mxb-game", version = "1.2.0", optional = true }
 mxb-extensions = { path = "../mxb-extensions", version = "0.1.0", optional = true }
 mxb-plugins = { path = "../mxb-plugins", version = "0.1.0", optional = true }
 mxb-mcp = { path = "../mxb-mcp", version = "0.1.0", optional = true }

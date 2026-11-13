@@ -1,7 +1,6 @@
-"""Fail if this repository contains anything that must stay private.
+"""Fail if this repository contains private implementation details or credentials.
 
-Runs in CI on every push and pull request. It is the same scan the monorepo runs before a sync
-(scripts/sdk-split/sdk_split.py there), so a leak is caught on both sides.
+Runs in CI on every push and pull request so leaks are caught before release.
 
     python scripts/leak_check.py
 """
@@ -35,6 +34,8 @@ DENY_TEXT = [
     (r"(?i)frostmod-private|mxbapp-private|mxb-apps-private", "a private repo"),
     (r"(?i)\b[a-z0-9.-]+\.workers\.dev\b", "an internal worker URL"),
     (r"(?i)control[- ]plane", "the private control plane"),
+    (r"(?i)apps[\\/]manager|src-tauri|packages[\\/]shared[\\/]|crates[\\/]core[\\/]src|gamesdk_replay|MXB_GAMESDK_REPLAY|sdk_split", "a private repository path or build name"),
+    (r"(?i)frostmod", "an internal game-integration name"),
     (r"\b(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(?:\.\d{1,3})?\b", "a private address"),
 ]
 

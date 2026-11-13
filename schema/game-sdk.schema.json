@@ -2,21 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mxbapp.dev/schema/game-sdk/1",
   "title": "MX Bikes Game SDK schema",
-  "description": "Public snapshots, events, actions, and version handshake for schema 1.",
+  "description": "Public snapshots, events, and version handshake for schema 1.",
   "x-schema-version": 1,
-  "x-sdk-version": "1.1.0",
+  "x-sdk-version": "1.2.0",
   "x-deprecated": [],
   "$defs": {
-    "ContentList": { "description": "A FrostMod content list.", "type": "string", "enum": ["tracks", "bikes", "gear", "paints", "all"] },
     "Phase": { "description": "The current session phase.", "type": "string", "enum": ["waiting", "practice", "qualifying", "warmup", "race", "unknown"] },
-    "ActionState": { "description": "The lifecycle state of an action.", "type": "string", "enum": ["sent", "accepted", "waiting", "running", "done", "refused", "failed"] },
-    "Capability": { "description": "An enabled server capability.", "type": "string", "enum": ["state", "events", "laps", "stream", "mcp", "actions"] },
+    "Capability": { "description": "An enabled server capability.", "type": "string", "enum": ["state", "events", "laps", "stream", "mcp"] },
     "Deprecation": { "description": "A public path scheduled for removal.", "type": "object", "additionalProperties": false, "required": ["path", "since", "removeIn", "use"], "properties": {
       "path": { "description": "Deprecated public path.", "type": "string" }, "since": { "description": "SDK minor version that deprecated it.", "type": "string" }, "removeIn": { "description": "Next major version that may remove it.", "type": "string" }, "use": { "description": "Replacement public path or operation.", "type": "string" }
     }},
     "Snapshot": {
       "description": "One frame of game state.", "type": "object", "additionalProperties": false,
-      "required": ["schema", "frame", "at", "source", "online", "session", "local", "riders", "frostmod"],
+      "required": ["schema", "frame", "at", "source", "online", "session", "local", "riders"],
       "properties": {
         "schema": { "description": "Schema major version.", "type": "integer" },
         "frame": { "description": "Frame number, increasing for every snapshot.", "type": "integer" },
@@ -25,8 +23,7 @@
         "online": { "description": "Whether this is an online session.", "type": "boolean" },
         "session": { "description": "Current event and session, or null.", "type": ["object", "null"], "oneOf": [{ "$ref": "#/$defs/Session" }, { "type": "null" }] },
         "local": { "description": "The player's bike, or null when off track.", "type": ["object", "null"], "oneOf": [{ "$ref": "#/$defs/Local" }, { "type": "null" }] },
-        "riders": { "description": "Riders in timing-screen order.", "type": "array", "items": { "$ref": "#/$defs/Rider" } },
-        "frostmod": { "description": "FrostMod action state, or null when unavailable.", "type": ["object", "null"], "oneOf": [{ "$ref": "#/$defs/FrostModState" }, { "type": "null" }] }
+        "riders": { "description": "Riders in timing-screen order.", "type": "array", "items": { "$ref": "#/$defs/Rider" } }
       }
     },
     "Session": {
@@ -69,32 +66,17 @@
     "TrackSpot": { "description": "A rider's position on track.", "type": "object", "additionalProperties": false, "required": ["progress","position","yawDeg","crashed"], "properties": {
       "progress":{"description":"Progress around the lap from 0 to 1.","type":"number"}, "position":{"description":"World position in metres.","type":"array","prefixItems":[{"type":"number"},{"type":"number"},{"type":"number"}],"items":false}, "yawDeg":{"description":"Yaw in degrees.","type":"number"}, "crashed":{"description":"Whether the rider is down.","type":"boolean"}
     }},
-    "FrostModState": { "description": "FrostMod action support and refresh state.", "type":"object", "additionalProperties":false, "required":["version","actions","refresh","waiting"], "properties": {
-      "version":{"description":"FrostMod version.","type":"string"}, "actions":{"description":"Whether actions can be sent.","type":"boolean"}, "refresh":{"description":"Active refresh, or null.","type":["object","null"],"oneOf":[{"$ref":"#/$defs/RefreshNow"},{"type":"null"}]}, "waiting":{"description":"Lists waiting for a content screen to close.","type":"array","items":{"$ref":"#/$defs/ContentList"}}
-    }},
-    "RefreshNow": { "description": "A mods refresh in progress.", "type":"object", "additionalProperties":false, "required":["lists","done","total"], "properties": {
-      "lists":{"description":"Content lists being refreshed.","type":"array","items":{"$ref":"#/$defs/ContentList"}}, "done":{"description":"Completed refresh work items.","type":"integer"}, "total":{"description":"Total refresh work items.","type":"integer"}
-    }},
     "LapRecord": { "description": "One completed local lap with telemetry statistics.", "type":"object", "additionalProperties":false, "required":["lap","timeMs","valid","best","splitsMs","topSpeedKmh","avgSpeedKmh","airtimeS","crashes","track","bike","at"], "properties": {
       "lap":{"description":"One-based lap number.","type":"integer"}, "timeMs":{"description":"Lap time in ms.","type":"integer"}, "valid":{"description":"Whether the lap is valid.","type":"boolean"}, "best":{"description":"Whether the game marked a personal best.","type":"boolean"}, "splitsMs":{"description":"Split times in ms.","type":"array","items":{"type":"integer"}}, "topSpeedKmh":{"description":"Top speed in km/h.","type":"number"}, "avgSpeedKmh":{"description":"Average speed in km/h.","type":"number"}, "airtimeS":{"description":"Time airborne in seconds.","type":"number"}, "crashes":{"description":"Crash count during the lap.","type":"integer"}, "track":{"description":"Track name.","type":"string"}, "bike":{"description":"Bike name.","type":"string"}, "at":{"description":"Completion time in Unix ms.","type":"integer"}
     }},
-    "ActionRequest": { "description":"An action request.", "oneOf":[
-      {"type":"object","additionalProperties":false,"required":["action"],"properties":{"action":{"description":"Reload every mods list.","const":"reload_mods"}}},
-      {"type":"object","additionalProperties":false,"required":["action","lists"],"properties":{"action":{"description":"Refresh one content list.","const":"refresh"},"lists":{"description":"Content list to refresh.","$ref":"#/$defs/ContentList"}}},
-      {"type":"object","additionalProperties":false,"required":["action","bike"],"properties":{"action":{"description":"Reload one bike's graphics configuration.","const":"reload_bike_gfx"},"bike":{"description":"Bike folder name.","type":"string"}}},
-      {"type":"object","additionalProperties":false,"required":["action"],"properties":{"action":{"description":"Reset the server browser connection.","const":"reset_server_browser"}}}
-    ]},
-    "ActionStatus": { "description":"The latest state of an action.", "type":"object", "additionalProperties":false, "required":["id","action","state","detail","lists","at"], "properties": {
-      "id":{"description":"Action identifier.","type":"string"}, "action":{"description":"Requested action name.","type":"string","enum":["reload_mods","refresh","reload_bike_gfx","reset_server_browser"]}, "state":{"description":"Current action state.","$ref":"#/$defs/ActionState"}, "detail":{"description":"Human-readable result detail.","type":"string"}, "lists":{"description":"Affected content lists.","type":"array","items":{"$ref":"#/$defs/ContentList"}}, "at":{"description":"Last update time in Unix ms.","type":"integer"}
-    }},
-    "Hello": { "description":"Server version and capability handshake.", "type":"object", "additionalProperties":false, "required":["schema","sdk","app","capabilities","frostmod","deprecated"], "properties": {
-      "schema":{"description":"Schema major version.","type":"integer"}, "sdk":{"description":"SDK semantic version.","type":"string"}, "app":{"description":"MXB App version.","type":"string"}, "capabilities":{"description":"Enabled endpoint capabilities.","type":"array","items":{"$ref":"#/$defs/Capability"}}, "frostmod":{"description":"FrostMod state, or null.","type":["object","null"],"oneOf":[{"$ref":"#/$defs/FrostModState"},{"type":"null"}]}, "deprecated":{"description":"Public paths scheduled for removal.","type":"array","items":{"$ref":"#/$defs/Deprecation"}}
+    "Hello": { "description":"Server version and capability handshake.", "type":"object", "additionalProperties":false, "required":["schema","sdk","app","capabilities","deprecated"], "properties": {
+      "schema":{"description":"Schema major version.","type":"integer"}, "sdk":{"description":"SDK semantic version.","type":"string"}, "app":{"description":"MXB App version.","type":"string"}, "capabilities":{"description":"Enabled endpoint capabilities.","type":"array","items":{"$ref":"#/$defs/Capability"}}, "deprecated":{"description":"Public paths scheduled for removal.","type":"array","items":{"$ref":"#/$defs/Deprecation"}}
     }},
     "GameEvent": {
       "description":"An event emitted by the engine.",
       "unevaluatedProperties": false,
       "oneOf": [
-        {"$ref":"#/$defs/EventStart"},{"$ref":"#/$defs/EventEnd"},{"$ref":"#/$defs/OnTrack"},{"$ref":"#/$defs/OffTrack"},{"$ref":"#/$defs/SessionStart"},{"$ref":"#/$defs/SessionState"},{"$ref":"#/$defs/SessionEnd"},{"$ref":"#/$defs/LapEvent"},{"$ref":"#/$defs/SplitEvent"},{"$ref":"#/$defs/CrashEvent"},{"$ref":"#/$defs/RecoverEvent"},{"$ref":"#/$defs/HoleshotEvent"},{"$ref":"#/$defs/OvertakeEvent"},{"$ref":"#/$defs/RiderJoinEvent"},{"$ref":"#/$defs/RiderLeaveEvent"},{"$ref":"#/$defs/CommunicationEvent"},{"$ref":"#/$defs/ActionEvent"},{"$ref":"#/$defs/ModsRefreshEvent"}
+        {"$ref":"#/$defs/EventStart"},{"$ref":"#/$defs/EventEnd"},{"$ref":"#/$defs/OnTrack"},{"$ref":"#/$defs/OffTrack"},{"$ref":"#/$defs/SessionStart"},{"$ref":"#/$defs/SessionState"},{"$ref":"#/$defs/SessionEnd"},{"$ref":"#/$defs/LapEvent"},{"$ref":"#/$defs/SplitEvent"},{"$ref":"#/$defs/CrashEvent"},{"$ref":"#/$defs/RecoverEvent"},{"$ref":"#/$defs/HoleshotEvent"},{"$ref":"#/$defs/OvertakeEvent"},{"$ref":"#/$defs/RiderJoinEvent"},{"$ref":"#/$defs/RiderLeaveEvent"},{"$ref":"#/$defs/CommunicationEvent"}
       ]
     },
     "EventStart":{"description":"The player joined an event.","type":"object","required":["seq","at","type","track","server"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"event_start"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"track":{"description":"Track name.","type":"string"},"server":{"description":"Server name, or null offline.","type":["string","null"]}}},
@@ -112,8 +94,6 @@
     "OvertakeEvent":{"description":"A rider gained places.","type":"object","required":["seq","at","type","place","passed"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"overtake"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"place":{"description":"New race place.","type":"integer"},"passed":{"description":"Race numbers passed.","type":"array","items":{"type":"integer"}}}},
     "RiderJoinEvent":{"description":"A rider joined.","type":"object","required":["seq","at","type","name"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"rider_join"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"name":{"description":"Rider name, or null.","type":["string","null"]}}},
     "RiderLeaveEvent":{"description":"A rider left.","type":"object","required":["seq","at","type","name"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"rider_leave"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"name":{"description":"Rider name, or null.","type":["string","null"]}}},
-    "CommunicationEvent":{"description":"A race-control message.","type":"object","required":["seq","at","type","what","penalty","seconds"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"communication"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"what":{"description":"Communication kind.","type":"string","enum":["retired","disqualified","penalty","notice"]},"penalty":{"description":"Penalty kind, or null.","type":["string","null"],"enum":["jump_start","cutting",null]},"seconds":{"description":"Penalty seconds, or null.","type":["integer","null"]}}},
-    "ActionEvent":{"description":"A FrostMod action state change.","type":"object","required":["seq","at","type","id","action","state","detail","lists"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"action"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"id":{"description":"Action identifier.","type":"string"},"action":{"description":"Action name.","type":"string"},"state":{"description":"FrostMod state.","type":"string","enum":["accepted","waiting","running","done","refused","failed"]},"detail":{"description":"Human-readable detail.","type":"string"},"lists":{"description":"Affected content lists.","type":"array","items":{"$ref":"#/$defs/ContentList"}}}},
-    "ModsRefreshEvent":{"description":"A mods refresh state change.","type":"object","required":["seq","at","type","phase","lists","what"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"mods_refresh"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"phase":{"description":"Refresh phase.","type":"string","enum":["running","done"]},"lists":{"description":"Affected content lists.","type":"array","items":{"$ref":"#/$defs/ContentList"}},"what":{"description":"Refresh detail.","type":"string"}}}
+    "CommunicationEvent":{"description":"A race-control message.","type":"object","required":["seq","at","type","what","penalty","seconds"],"properties":{"seq":{"description":"Event sequence number.","type":"integer"},"at":{"description":"Event time in Unix ms.","type":"integer"},"type":{"description":"Event discriminator.","const":"communication"},"raceNum":{"description":"Related race number.","type":"integer"},"local":{"description":"Whether this concerns the player.","type":"boolean"},"what":{"description":"Communication kind.","type":"string","enum":["retired","disqualified","penalty","notice"]},"penalty":{"description":"Penalty kind, or null.","type":["string","null"],"enum":["jump_start","cutting",null]},"seconds":{"description":"Penalty seconds, or null.","type":["integer","null"]}}}
   }
 }

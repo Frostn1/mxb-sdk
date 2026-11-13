@@ -32,8 +32,6 @@ stream.onEvent("overtake", (e) => e.local && console.log(`Up to P${e.place}`));
 | `laps()` | your laps this session |
 | `stream({ rate, state, events })` | live frames and events over a WebSocket, reconnecting |
 | `health()` | whether the app's endpoint is up |
-| `reloadMods()`, `refresh(list)`, `reloadBikeGfx(bike)`, `act(request)` | [actions](../../docs/sdk/game.md#actions): needs Allow actions |
-| `actionStatus(id)`, `waitForAction(id)` | what an action came to |
 
 ## Build
 
@@ -48,7 +46,6 @@ bun test
 
 - `samples/overlay/index.html`: a stream overlay for OBS (`?token=…`)
 - `samples/node/laps.mjs`: laps, passes and crashes in a terminal
-- `samples/node/reload-on-save.mjs`: for mod makers, refreshes the running game when you save a mod file
 - `../../extensions/samples/lap-timer`: an MXB App extension tab
 
 ## MCP

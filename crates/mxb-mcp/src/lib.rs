@@ -4,6 +4,15 @@ use serde_json::{json, Value};
 use std::fmt;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
+/// Tool names the read-only bridge permits.
+pub const READ_ONLY_TOOLS: &[&str] = &[
+    "get_game_state",
+    "get_last_lap",
+    "get_session_laps",
+    "get_standings",
+    "get_recent_events",
+];
+
 /// Bridge configuration.
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -80,7 +89,29 @@ where
                 continue;
             }
         };
+        // A batch could carry a tools/call past the allowlist below, so batches are refused.
+        if !message.is_object() {
+            write_json(&mut writer, &json!({
+                "jsonrpc": "2.0", "id": null,
+                "error": { "code": -32600, "message": "batches are not supported by the read-only bridge" }
+            }))
+            .await?;
+            continue;
+        }
         let id = message.get("id").cloned();
+        if message.get("method").and_then(Value::as_str) == Some("tools/call") {
+            let name = message.pointer("/params/name").and_then(Value::as_str).unwrap_or("");
+            if !READ_ONLY_TOOLS.contains(&name) {
+                write_json(&mut writer, &json!({
+                    "jsonrpc": "2.0", "id": id.unwrap_or(Value::Null),
+                    "error": { "code": -32601, "message": format!(
+                        "tool not available: {name} (the SDK is read-only)"
+                    ) }
+                }))
+                .await?;
+                continue;
+            }
+        }
         let response = client
             .post(&endpoint)
             .bearer_auth(&config.token)
@@ -120,6 +151,21 @@ where
                 .await?;
             }
         } else if !body.trim().is_empty() {
+            if message.get("method").and_then(Value::as_str) == Some("tools/list") {
+                if let Ok(mut value) = serde_json::from_str::<Value>(&body) {
+                    if let Some(tools) =
+                        value.pointer_mut("/result/tools").and_then(Value::as_array_mut)
+                    {
+                        tools.retain(|tool| {
+                            tool.get("name")
+                                .and_then(Value::as_str)
+                                .is_some_and(|name| READ_ONLY_TOOLS.contains(&name))
+                        });
+                    }
+                    write_json(&mut writer, &value).await?;
+                    continue;
+                }
+            }
             writer.write_all(body.trim().as_bytes()).await?;
             writer.write_all(b"\n").await?;
             writer.flush().await?;

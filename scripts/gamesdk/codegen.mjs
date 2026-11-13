@@ -45,6 +45,8 @@ function emitTsDef(name, s) {
 let ts = header;
 ts += `export const SCHEMA_VERSION = ${JSON.stringify(schema["x-schema-version"])} as const;\n`;
 ts += `export const SDK_VERSION = ${JSON.stringify(schema["x-sdk-version"])} as const;\n\n`;
+ts += `/** Event discriminators recognized by this SDK version. */\n`;
+ts += `export const GAME_EVENT_TYPES = ${JSON.stringify(eventBranches().map((branch) => branch.properties.type.const))} as const;\n\n`;
 for (const [name, def] of Object.entries(defs)) ts += emitTsDef(name, def) + "\n";
 
 const snake = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replaceAll("-", "_").toLowerCase();
@@ -139,11 +141,10 @@ for (const [name, values] of rustEnums) {
 }
 
 for (const [name, def] of Object.entries(defs)) {
-  if (def.enum || name === "GameEvent" || name === "ActionRequest" || name.endsWith("Event") || ["EventStart","EventEnd","OnTrack","OffTrack","SessionStart","SessionState","SessionEnd"].includes(name)) continue;
+  if (def.enum || name === "GameEvent" || name.endsWith("Event") || ["EventStart","EventEnd","OnTrack","OffTrack","SessionStart","SessionState","SessionEnd"].includes(name)) continue;
   if (def.type === "object") rust += emitRustStruct(name, def) + "\n";
 }
 
-rust += `/// An action as a caller asks for it.\n#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]\n#[serde(tag = "action", rename_all = "snake_case")]\npub enum ActionRequest {\n    ReloadMods,\n    Refresh { lists: ContentList },\n    ReloadBikeGfx { bike: String },\n    ResetServerBrowser,\n}\n\n`;
 rust += `/// Common fields on every game event.\n#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]\n#[serde(rename_all = "camelCase")]\npub struct Event {\n    /// Event sequence number.\n    pub seq: i64,\n    /// Event time in Unix ms.\n    pub at: i64,\n    /// Related race number, when the emitter has one.\n    #[serde(skip_serializing_if = "Option::is_none")]\n    pub race_num: Option<i64>,\n    /// Whether this concerns the player, when known.\n    #[serde(skip_serializing_if = "Option::is_none")]\n    pub local: Option<bool>,\n    /// Event-specific fields and type tag.\n    #[serde(flatten)]\n    pub kind: EventKind,\n}\n\n/// Backward-compatible name for a typed game event.\npub type GameEvent = Event;\n\n`;
 rust += `/// Per-type game event fields.\n#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]\n#[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]\npub enum EventKind {\n`;
 for (const branch of eventBranches()) {

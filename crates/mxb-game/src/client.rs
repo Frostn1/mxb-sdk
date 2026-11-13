@@ -1,13 +1,10 @@
-use crate::types::{
-    ActionRequest, ActionState, ActionStatus, ContentList, Event, Hello, LapRecord, Snapshot,
-    SCHEMA_VERSION,
-};
+use crate::types::{Event, Hello, LapRecord, Snapshot, SCHEMA_VERSION};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 const DEFAULT_URL: &str = "http://127.0.0.1:47820";
@@ -25,8 +22,6 @@ pub enum Error {
     Json(serde_json::Error),
     /// The WebSocket connection failed.
     WebSocket(tungstenite::Error),
-    /// An action did not finish before its deadline.
-    Timeout,
 }
 
 impl fmt::Display for Error {
@@ -40,7 +35,6 @@ impl fmt::Display for Error {
             Self::Io(error) => write!(f, "{error}"),
             Self::Json(error) => write!(f, "{error}"),
             Self::WebSocket(error) => write!(f, "{error}"),
-            Self::Timeout => f.write_str("the Game SDK operation timed out"),
         }
     }
 }
@@ -182,65 +176,17 @@ impl Client {
     /// Returns events after `since`, oldest first, and the latest sequence number.
     pub async fn events(&self, since: i64) -> Result<(Vec<Event>, i64), Error> {
         let page: EventsPage = self.get(&format!("/v1/events?since={since}")).await?;
-        Ok((page.events, page.last))
+        let events = page
+            .events
+            .into_iter()
+            .filter_map(|event| serde_json::from_value(event).ok())
+            .collect();
+        Ok((events, page.last))
     }
 
     /// Returns the player's completed laps for the current session.
     pub async fn laps(&self) -> Result<Vec<LapRecord>, Error> {
         Ok(self.get::<LapsPage>("/v1/laps").await?.laps)
-    }
-
-    /// Sends an action, waiting 600 ms and retrying once when the app answers 429.
-    pub async fn act(&self, action: ActionRequest) -> Result<ActionReceipt, Error> {
-        let send = || {
-            self.http
-                .post(format!("{}/v1/actions", self.url))
-                .bearer_auth(&self.token)
-                .json(&action)
-                .send()
-        };
-        let mut response = send().await.map_err(|error| Error::Http(error.to_string()))?;
-        if response.status().as_u16() == 429 {
-            tokio::time::sleep(Duration::from_millis(600)).await;
-            response = send().await.map_err(|error| Error::Http(error.to_string()))?;
-        }
-        Self::response(response).await
-    }
-
-    /// Rescans the mods folder and rebuilds every content list.
-    pub async fn reload_mods(&self) -> Result<ActionReceipt, Error> {
-        self.act(ActionRequest::ReloadMods).await
-    }
-
-    /// Rebuilds one content list.
-    pub async fn refresh(&self, lists: ContentList) -> Result<ActionReceipt, Error> {
-        self.act(ActionRequest::Refresh { lists }).await
-    }
-
-    /// Reloads a bike's edited `gfx.cfg` in the running game.
-    pub async fn reload_bike_gfx(&self, bike: impl Into<String>) -> Result<ActionReceipt, Error> {
-        self.act(ActionRequest::ReloadBikeGfx { bike: bike.into() }).await
-    }
-
-    /// Returns the latest known state of an action.
-    pub async fn action_status(&self, id: &str) -> Result<ActionStatus, Error> {
-        let encoded: String = url::form_urlencoded::byte_serialize(id.as_bytes()).collect();
-        self.get(&format!("/v1/actions?id={encoded}")).await
-    }
-
-    /// Polls until an action finishes, is refused, fails, or reaches `timeout`.
-    pub async fn wait_for_action(&self, id: &str, timeout: Duration) -> Result<ActionStatus, Error> {
-        let deadline = Instant::now() + timeout;
-        loop {
-            let status = self.action_status(id).await?;
-            if matches!(status.state, ActionState::Done | ActionState::Refused | ActionState::Failed) {
-                return Ok(status);
-            }
-            if Instant::now() >= deadline {
-                return Err(Error::Timeout);
-            }
-            tokio::time::sleep(Duration::from_millis(250)).await;
-        }
     }
 
     /// Opens a live stream. The connection and reconnect loop run on a standard thread.
@@ -252,17 +198,6 @@ impl Client {
         std::thread::spawn(move || stream_thread(url, options.reconnect, stop, tx));
         Stream { rx, closed }
     }
-}
-
-/// The immediate receipt returned after an action is sent.
-#[derive(Clone, Debug, Deserialize, serde::Serialize)]
-pub struct ActionReceipt {
-    /// The identifier used to poll the action.
-    pub id: String,
-    /// The action name accepted by the app.
-    pub action: String,
-    /// The initial state, normally `sent`.
-    pub state: String,
 }
 
 /// Options for a live WebSocket stream.
@@ -330,7 +265,7 @@ struct ErrorBody {
 
 #[derive(Deserialize)]
 struct EventsPage {
-    events: Vec<Event>,
+    events: Vec<serde_json::Value>,
     last: i64,
 }
 
@@ -347,11 +282,10 @@ enum WireMessage {
         sdk: String,
         app: String,
         capabilities: Vec<crate::types::Capability>,
-        frostmod: Option<crate::types::FrostModState>,
         deprecated: Vec<crate::types::Deprecation>,
     },
     State { data: Snapshot },
-    Event { data: Event },
+    Event { data: serde_json::Value },
 }
 
 fn stream_url(base: &str, token: &str, options: &StreamOptions) -> String {
@@ -405,7 +339,7 @@ fn stream_thread(
                         }
                     };
                     let message = match wire {
-                        WireMessage::Hello { schema, sdk, app, capabilities, frostmod, deprecated } => {
+                        WireMessage::Hello { schema, sdk, app, capabilities, deprecated } => {
                             if schema != SCHEMA_VERSION as i64 {
                                 let error = Error::Incompatible { server: schema, client: SCHEMA_VERSION };
                                 let _ = tx.blocking_send(Message::Disconnected(error.to_string()));
@@ -417,10 +351,13 @@ fn stream_thread(
                             if restored && tx.blocking_send(Message::Reconnected).is_err() {
                                 return;
                             }
-                            Message::Hello(Hello { schema, sdk, app, capabilities, frostmod, deprecated })
+                            Message::Hello(Hello { schema, sdk, app, capabilities, deprecated })
                         }
                         WireMessage::State { data } => Message::State(data),
-                        WireMessage::Event { data } => Message::Event(data),
+                        WireMessage::Event { data } => match serde_json::from_value(data) {
+                            Ok(event) => Message::Event(event),
+                            Err(_) => continue,
+                        },
                     };
                     if tx.blocking_send(message).is_err() {
                         return;

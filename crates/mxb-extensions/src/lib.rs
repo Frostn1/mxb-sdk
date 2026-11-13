@@ -114,7 +114,6 @@ pub const PERMISSIONS: &[&str] = &[
     "friends.presence",
     "game.state",
     "game.read",
-    "game.actions",
     "presets.read",
     "coach.read",
     "studio.launch",
@@ -450,6 +449,9 @@ pub fn validate_manifest(m: &Manifest, files: &BTreeMap<String, Vec<u8>>) -> Res
     }
     let mut seen = BTreeSet::new();
     for p in &m.permissions {
+        if p == "game.actions" {
+            bail!("game.actions is not available: the SDK is read-only");
+        }
         if !PERMISSIONS.contains(&p.as_str()) {
             bail!("unknown permission '{p}'");
         }

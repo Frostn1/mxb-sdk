@@ -8,4 +8,4 @@ mod client;
 pub mod types;
 
 /// Primary client, stream, configuration, and error types.
-pub use client::{ActionReceipt, Builder, Client, Error, Message, Stream, StreamOptions};
+pub use client::{Builder, Client, Error, Message, Stream, StreamOptions};

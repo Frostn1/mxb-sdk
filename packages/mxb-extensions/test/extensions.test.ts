@@ -26,6 +26,11 @@ test("rejects an unknown permission", () => {
   expect(result.errors.join(" ")).toContain("unknown permission");
 });
 
+test("rejects the removed game actions permission clearly", () => {
+  const result = validateManifest({ ...good, permissions: ["game.actions"] });
+  expect(result.errors).toContain("game.actions is not available: the SDK is read-only");
+});
+
 test("packs and verifies a signed package", async () => {
   temp = await mkdtemp(join(import.meta.dir, ".tmp-ext-"));
   const folder = join(temp, "extension");

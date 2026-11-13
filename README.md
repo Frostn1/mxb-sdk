@@ -7,7 +7,7 @@ AI assistants the game's data.
 | Package | Rust crate | npm | For |
 |---|---|---|---|
 | core | `mxb-core` | `@mxb/core` | Find installs, list, identify, install, uninstall and verify mods; paints and presets |
-| game | `mxb-game` | `@mxb/game` | Live game data and events from MXB App; reload mods in the running game |
+| game | `mxb-game` | `@mxb/game` | Read-only live game data and events from MXB App |
 | extensions | `mxb-extensions` | `@mxb/extensions` | Build, check, pack and sign MXB App extensions |
 | plugins | `mxb-plugins` | `@mxb/plugins` | MX Bikes game plugins and the `.mxbplugin.json` manifest |
 | mcp | `mxb-mcp` | `@mxb/mcp` | The MCP bridge for AI assistants |
@@ -26,8 +26,8 @@ Start with the docs: [docs/sdk/README.md](docs/sdk/README.md).
 
 ## Promises
 
-- The game client is read-only, and fair online: other riders are what the game's timing screen
-  shows, nothing more.
+- The game clients only read; nothing can send input, commands, or settings to the game. Online,
+  other riders are limited to what the game's timing screen shows.
 - Installing never deletes your files; removing a mod sends it to the Recycle Bin.
 - No private formats, keys or network services. Everything here works offline except the live
   game client, which talks only to MXB App on your own PC (127.0.0.1).
