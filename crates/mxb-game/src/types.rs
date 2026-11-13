@@ -3,23 +3,7 @@
 /// Serialized schema major supported by these generated types.
 pub const SCHEMA_VERSION: u32 = 1;
 /// Semantic version of the Game SDK represented by these generated types.
-pub const SDK_VERSION: &str = "1.1.0";
-
-/// A FrostMod content list.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ContentList {
-    /// Serialized as "tracks".
-    Tracks,
-    /// Serialized as "bikes".
-    Bikes,
-    /// Serialized as "gear".
-    Gear,
-    /// Serialized as "paints".
-    Paints,
-    /// Serialized as "all".
-    All,
-}
+pub const SDK_VERSION: &str = "1.2.0";
 
 /// The current session phase.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -39,26 +23,6 @@ pub enum Phase {
     Unknown,
 }
 
-/// The lifecycle state of an action.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ActionState {
-    /// Serialized as "sent".
-    Sent,
-    /// Serialized as "accepted".
-    Accepted,
-    /// Serialized as "waiting".
-    Waiting,
-    /// Serialized as "running".
-    Running,
-    /// Serialized as "done".
-    Done,
-    /// Serialized as "refused".
-    Refused,
-    /// Serialized as "failed".
-    Failed,
-}
-
 /// An enabled server capability.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -73,8 +37,6 @@ pub enum Capability {
     Stream,
     /// Serialized as "mcp".
     Mcp,
-    /// Serialized as "actions".
-    Actions,
 }
 
 /// Allowed SnapshotSource values.
@@ -115,20 +77,6 @@ pub enum SessionWeather {
     Rain,
 }
 
-/// Allowed ActionStatusAction values.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ActionStatusAction {
-    /// Serialized as "reload_mods".
-    ReloadMods,
-    /// Serialized as "refresh".
-    Refresh,
-    /// Serialized as "reload_bike_gfx".
-    ReloadBikeGfx,
-    /// Serialized as "reset_server_browser".
-    ResetServerBrowser,
-}
-
 /// Allowed CommunicationEventWhat values.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -151,34 +99,6 @@ pub enum CommunicationEventPenalty {
     JumpStart,
     /// Serialized as "cutting".
     Cutting,
-}
-
-/// Allowed ActionEventState values.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ActionEventState {
-    /// Serialized as "accepted".
-    Accepted,
-    /// Serialized as "waiting".
-    Waiting,
-    /// Serialized as "running".
-    Running,
-    /// Serialized as "done".
-    Done,
-    /// Serialized as "refused".
-    Refused,
-    /// Serialized as "failed".
-    Failed,
-}
-
-/// Allowed ModsRefreshEventPhase values.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModsRefreshEventPhase {
-    /// Serialized as "running".
-    Running,
-    /// Serialized as "done".
-    Done,
 }
 
 /// A public path scheduled for removal.
@@ -215,8 +135,6 @@ pub struct Snapshot {
     pub local: Option<Local>,
     /// Riders in timing-screen order.
     pub riders: Vec<Rider>,
-    /// FrostMod action state, or null when unavailable.
-    pub frostmod: Option<FrostModState>,
 }
 
 /// The current event and session.
@@ -411,32 +329,6 @@ pub struct TrackSpot {
     pub crashed: bool,
 }
 
-/// FrostMod action support and refresh state.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FrostModState {
-    /// FrostMod version.
-    pub version: String,
-    /// Whether actions can be sent.
-    pub actions: bool,
-    /// Active refresh, or null.
-    pub refresh: Option<RefreshNow>,
-    /// Lists waiting for a content screen to close.
-    pub waiting: Vec<ContentList>,
-}
-
-/// A mods refresh in progress.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RefreshNow {
-    /// Content lists being refreshed.
-    pub lists: Vec<ContentList>,
-    /// Completed refresh work items.
-    pub done: i64,
-    /// Total refresh work items.
-    pub total: i64,
-}
-
 /// One completed local lap with telemetry statistics.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -467,24 +359,6 @@ pub struct LapRecord {
     pub at: i64,
 }
 
-/// The latest state of an action.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActionStatus {
-    /// Action identifier.
-    pub id: String,
-    /// Requested action name.
-    pub action: ActionStatusAction,
-    /// Current action state.
-    pub state: ActionState,
-    /// Human-readable result detail.
-    pub detail: String,
-    /// Affected content lists.
-    pub lists: Vec<ContentList>,
-    /// Last update time in Unix ms.
-    pub at: i64,
-}
-
 /// Server version and capability handshake.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -497,20 +371,8 @@ pub struct Hello {
     pub app: String,
     /// Enabled endpoint capabilities.
     pub capabilities: Vec<Capability>,
-    /// FrostMod state, or null.
-    pub frostmod: Option<FrostModState>,
     /// Public paths scheduled for removal.
     pub deprecated: Vec<Deprecation>,
-}
-
-/// An action as a caller asks for it.
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "action", rename_all = "snake_case")]
-pub enum ActionRequest {
-    ReloadMods,
-    Refresh { lists: ContentList },
-    ReloadBikeGfx { bike: String },
-    ResetServerBrowser,
 }
 
 /// Common fields on every game event.
@@ -640,27 +502,5 @@ pub enum EventKind {
         penalty: Option<CommunicationEventPenalty>,
         /// Penalty seconds, or null.
         seconds: Option<i64>,
-    },
-    /// A FrostMod action state change.
-    Action {
-        /// Action identifier.
-        id: String,
-        /// Action name.
-        action: String,
-        /// FrostMod state.
-        state: ActionEventState,
-        /// Human-readable detail.
-        detail: String,
-        /// Affected content lists.
-        lists: Vec<ContentList>,
-    },
-    /// A mods refresh state change.
-    ModsRefresh {
-        /// Refresh phase.
-        phase: ModsRefreshEventPhase,
-        /// Affected content lists.
-        lists: Vec<ContentList>,
-        /// Refresh detail.
-        what: String,
     },
 }

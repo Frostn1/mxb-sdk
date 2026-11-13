@@ -47,6 +47,18 @@ fn refuses_unknown_permissions() {
 }
 
 #[test]
+fn refuses_the_removed_game_actions_permission() {
+    let root = temp("read-only-permission");
+    write_manifest(&root, &["game.actions"]);
+    let files = read_folder(&root).unwrap();
+    let manifest: Manifest = serde_json::from_slice(&files["extension.json"]).unwrap();
+    assert_eq!(
+        validate_manifest(&manifest, &files).unwrap_err().to_string(),
+        "game.actions is not available: the SDK is read-only"
+    );
+}
+
+#[test]
 fn signed_pack_round_trip() {
     let root = temp("roundtrip");
     write_manifest(&root, &[]);

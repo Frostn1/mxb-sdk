@@ -18,6 +18,17 @@ export interface McpCallResult {
   structuredContent?: unknown;
 }
 
+/** Tool names the read-only client permits. */
+export const READ_ONLY_TOOLS = [
+  "get_game_state",
+  "get_last_lap",
+  "get_session_laps",
+  "get_standings",
+  "get_recent_events",
+] as const;
+
+const readOnlyTools = new Set<string>(READ_ONLY_TOOLS);
+
 interface JsonRpcResponse<T> {
   jsonrpc: "2.0";
   id: number;
@@ -82,10 +93,11 @@ export class McpClient {
 
   async listTools(): Promise<McpTool[]> {
     if (!this.initialized) await this.initialize();
-    return (await this.request<{ tools: McpTool[] }>("tools/list")).tools;
+    return (await this.request<{ tools: McpTool[] }>("tools/list")).tools.filter((tool) => readOnlyTools.has(tool.name));
   }
 
   async callTool(name: string, args: Record<string, unknown> = {}): Promise<McpCallResult> {
+    if (!readOnlyTools.has(name)) throw new McpError(`tool not available: ${name} (the SDK is read-only)`, -32601);
     if (!this.initialized) await this.initialize();
     return this.request<McpCallResult>("tools/call", { name, arguments: args });
   }

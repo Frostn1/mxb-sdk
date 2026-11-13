@@ -18,6 +18,7 @@ cargo test --workspace
 cargo build -p mxb-sdk --no-default-features --features core
 npm install && npm test
 python scripts/leak_check.py
+python scripts/boundary_check.py
 ```
 
 - Keep the public API small: one obvious way to do each thing.
@@ -28,8 +29,7 @@ python scripts/leak_check.py
 
 ## What will not be accepted
 
-- Anything that sends input or commands into the game beyond the documented actions, or that
-  gives an advantage online.
+- Anything that sends input, commands or settings into the game, or that gives an advantage online.
 - Code for protected or encrypted content formats.
 - Anything that deletes user files instead of using the Recycle Bin.
 

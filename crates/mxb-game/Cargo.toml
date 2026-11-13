@@ -1,6 +1,6 @@
 [package]
 name = "mxb-game"
-version = "1.1.0"
+version = "1.2.0"
 description = "Async Rust client and public types for MXB App's live Game SDK."
 edition = "2021"
 license = "MIT"

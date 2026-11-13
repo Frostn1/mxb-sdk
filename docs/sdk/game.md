@@ -38,14 +38,14 @@ and game-build support.
 4. Or open the sample overlay in a browser or an OBS Browser source:
    `packages/mxb-game/samples/overlay/index.html?token=YOUR_TOKEN`
 
-No game handy? [Develop against a recording](#develop-without-the-game).
+No game handy? See [Develop without the game](#develop-without-the-game).
 
 ---
 
 ## How it works
 
 ```
-MX Bikes ──plugin API──▶ session integration ──shared memory (this user only)──▶ MXB App
+MX Bikes ──plugin API──▶ game integration ──shared memory (this user only)──▶ MXB App
                          (copies payloads, 50 Hz)                                     │
                                                        decode · fairness · events ◀───┘
                                                        │
@@ -53,14 +53,13 @@ MX Bikes ──plugin API──▶ session integration ──shared memory (this
                     extensions (game.read)     local API (127.0.0.1)        MCP (POST /mcp)
 ```
 
-- The session integration receives PiBoSo's published plugin callbacks and copies
+- The game integration receives PiBoSo's published plugin callbacks and copies
   each payload, byte for byte, into a user-only shared block. Snapshots for state
   that is replaced (telemetry, the timing screen, positions, the entry list), and a numbered ring
   for things that happen (laps, splits, session changes, riders joining), so a lap is never lost
   between two reads. It only copies: no decoding, no network, nothing written to the game.
-- **MXB App** (`crates/core/src/gamesdk/`) reads the block at 50 Hz, decodes it with the published
-  MX Bikes layouts, applies the fairness rules, derives events (crashes, overtakes, the holeshot)
-  and serves the result.
+- **MXB App** reads the block at 50 Hz, decodes it with the published MX Bikes layouts, applies
+  the fairness rules, derives events (crashes, overtakes, the holeshot), and serves the result.
 
 ---
 
@@ -84,7 +83,8 @@ but you, and crash events are only yours.
 
 Also:
 
-- **Read-only.** There is no write path, in the API or the code behind it.
+- **Read-only.** The SDK clients and MCP bridge only send GET requests and the WebSocket
+  subscription; they cannot send anything to the game.
 - **Off by default.** The local API is closed until you turn it on, listens on `127.0.0.1` only,
   and every request needs the token. **New token** in Settings revokes the old one and closes every
   open stream.
@@ -108,8 +108,6 @@ Base URL `http://127.0.0.1:47820`. Send the token as `Authorization: Bearer <tok
 | `GET /v1/events?since=<seq>` | `{ events, last }`: events after `seq`, oldest first (the last 500 are kept) |
 | `GET /v1/laps` | `{ laps }`: your completed laps this session, with speeds, airtime and crashes |
 | `GET /v1/stream` (WebSocket) | Live frames and events, below |
-| `POST /v1/actions` | Send an [action](#actions) (needs Allow actions) |
-| `GET /v1/actions?id=<id>` | What an action came to |
 | `POST /mcp` | MCP, below |
 
 Errors are JSON `{ "error": "…" }` with 401 (token), 403 (host), 404, 429 (rate), 503 (connections).
@@ -126,7 +124,7 @@ ws://127.0.0.1:47820/v1/stream?token=<token>&rate=30&topics=state,events
 Messages are JSON text:
 
 ```json
-{ "type": "hello", "schema": 1, "sdk": "1.1.0", "app": "0.21.0", "capabilities": ["state", "events", "laps", "stream", "mcp"], "frostmod": null, "deprecated": [], "rate": 30 }
+{ "type": "hello", "schema": 1, "sdk": "1.2.0", "app": "0.21.0", "capabilities": ["state", "events", "laps", "stream", "mcp"], "deprecated": [], "rate": 30 }
 { "type": "state", "data": { …Snapshot… } }
 { "type": "event", "data": { "seq": 41, "type": "lap", "local": true, "lap": 4, "timeMs": 95123, … } }
 ```
@@ -192,8 +190,6 @@ Every event has `seq` (resume with `since`), `at` (unix ms) and `type`; most hav
 | `holeshot` | `name`, `derived: true` | The game never passes the holeshot to plugins, so this is who led the timing screen at the race's first split |
 | `rider_join` / `rider_leave` | `name` | |
 | `communication` | `what` (`retired`, `disqualified`, `penalty`), `penalty` (`jump_start`, `cutting`), `seconds` | |
-| `action` | `id`, `action`, `state`, `detail`, `lists` | The game integration's answer to an [action](#actions) |
-| `mods_refresh` | `phase` (`running`, `done`), `lists`, `what` | A mods refresh, whoever started it |
 
 ---
 
@@ -206,62 +202,12 @@ timing screen*. `game.state` (is the game running) is separate and unchanged.
 const snap = await mxb.game.read();                 // the current Snapshot
 const stop = mxb.game.subscribe((s) => draw(s), { rate: 10 });   // up to 20 a second
 mxb.game.onEvent((e) => { if (e.type === "lap" && e.local) addLap(e); });
-await mxb.game.act({ action: "refresh", lists: "paints" });      // needs game.actions
 ```
 
-Sample: [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer), a live lap timer tab.
+Sample: [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer/extension.json), a live lap timer tab.
 Load it with Settings → Extensions → Developer mode → Load folder.
 
 ---
-
-## Actions
-
-Besides reading, the SDK can ask the game integration to do what MXB App's own
-buttons: pick up mods you just installed or edited, without restarting.
-
-| Action | Request | What it does |
-|---|---|---|
-| Reload mods | `{ "action": "reload_mods" }` | Rescans the mods folder and rebuilds every content list |
-| Refresh one list | `{ "action": "refresh", "lists": "tracks" }` | Rebuilds only `tracks`, `bikes`, `gear` (rider models and their paints) or `paints`. Faster. `all` is the same as reload. |
-| Reload a bike's gfx.cfg | `{ "action": "reload_bike_gfx", "bike": "<bike folder>" }` | Puts edited grips, levers, chain and rider offset onto the bike now |
-| Reset the server browser | `{ "action": "reset_server_browser" }` | Closes a half-open master session so the next Browse starts clean |
-
-Nothing else. No settings, no physics, nothing about other riders, and nothing that could not
-already be done from the app.
-
-**Turning it on.** Actions are a separate switch from reading:
-
-- the local API and MCP need **Settings → Game SDK → Allow actions** (off by default);
-- an extension needs the `game.actions` permission (*Send actions to the game: reload mods, refresh
-  tracks, bikes, gear or paints*).
-
-They need a compatible game integration in a running game. An older integration, or none, gets a clear refusal.
-
-**What comes back.** Sending answers at once with an `id`:
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" -d '{"action":"refresh","lists":"tracks"}' http://127.0.0.1:47820/v1/actions
-# 202 {"id":"a1-c787f87b","action":"refresh","state":"sent"}
-```
-
-The game integration then reports what it came to, as `action` events on the stream and from
-`GET /v1/actions?id=<id>`:
-
-| `state` | Means |
-|---|---|
-| `accepted` | The game integration took it |
-| `waiting` | A content screen (the bike or track chooser) holds the lists; it runs when the player leaves it. `detail` names the screen. |
-| `running` | The refresh is under way; `snapshot.frostmod.refresh` has `done` of `total` |
-| `done` | Finished |
-| `refused` | Won't happen (an unknown action, or one this game doesn't support); `detail` says why |
-| `failed` | Tried and went wrong; see the game integration log |
-
-A request that asks for a list a running refresh already rebuilds is answered by that refresh.
-Every refresh, whoever started it (an action, the in-game hotkey, MXB App's Reload), also raises
-`mods_refresh` events with `phase` `running` and `done`.
-
-Errors: 403 when actions are off, 409 when the game integration can't take it (with the reason), 429 when
-actions come faster than one every half second (the SDK client waits and resends once).
 
 ## AI assistants (MCP)
 
@@ -287,14 +233,12 @@ Tools, all read-only:
 | `get_session_laps` | Every lap this session (`limit`) |
 | `get_standings` | The timing screen |
 | `get_recent_events` | Recent events (`limit`, `type`) |
-| `reload_mods` | Reload mods in the running game and wait for it (up to 20 s). Listed only with Allow actions on. |
-| `refresh_content` | Refresh one list (`lists`: tracks, bikes, gear, paints, all). Listed only with Allow actions on. |
 
 ---
 
 ## The TypeScript SDK
 
-[`packages/mxb-game`](../../packages/mxb-game): typed schemas and a client for browsers and Node 22+.
+[`packages/mxb-game`](../../packages/mxb-game/README.md): typed schemas and a client for browsers and Node 22+.
 
 ```ts
 import { GameSdk, formatLap } from "@mxb/game";
@@ -316,25 +260,14 @@ Not on npm yet: build it from the repo (`cd packages/mxb-game && bun run build`)
 | Sample | |
 |---|---|
 | [`samples/overlay`](../../packages/mxb-game/samples/overlay/index.html) | A 1920×1080 stream overlay: timing tower, place, speed, gear, rpm, pedals, lap timer and an event ticker. One HTML file, transparent background. Query: `token`, `url`, `rows`, `units=mph`. |
-| [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer) | A lap timer tab inside MXB App |
+| [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer/extension.json) | A lap timer tab inside MXB App |
 | [`samples/node/laps.mjs`](../../packages/mxb-game/samples/node/laps.mjs) | Prints laps, passes and crashes as they happen, and a summary on Ctrl+C |
-| [`samples/node/reload-on-save.mjs`](../../packages/mxb-game/samples/node/reload-on-save.mjs) | For mod makers: watches your mods folder and refreshes just the list you changed (or a bike's gfx.cfg) in the running game when you save |
 
 ---
 
 ## Develop without the game
 
-`gamesdk_replay` plays an MXB Coach recording (`.mxbc`, in `Documents\PiBoSo\MX Bikes\mxbcoach\sessions`)
-as if the game were running, and serves the same local API, without MXB App:
-
-```bash
-cargo run -p mxb-game --example gamesdk_replay -- path/to/recording.mxbc --port 47820
-```
-
-It prints the token and the overlay URL. Add `--actions` to allow actions, and run the fake action
-responder example beside it to have them answered (it changes nothing and must not run while MX Bikes runs). A recording has no timing screen of its own, so places come
-from laps and progress and gaps are approximate; everything else is the recorded data. A debug build
-of MXB App does the same with `MXB_GAMESDK_REPLAY=<file>`.
+A mock server for developing without the game is planned; until then, test against the recorded fixtures in the tests.
 
 ---
 
@@ -347,16 +280,3 @@ of MXB App does the same with `MXB_GAMESDK_REPLAY=<file>`.
 - `phase` is derived from the game's session index in the order the game itself lists sessions;
   `session` and `state` are passed on raw for anything finer.
 - The holeshot is derived (see Events).
-
-## Code
-
-| Part | Where |
-|---|---|
-| Decode, engine, fairness, events | `crates/mxb-game/src/` |
-| Block reader, local API, WebSocket | `crates/mxb-game/src/` |
-| MCP tools | `crates/mxb-game/src/mcp.rs` |
-| Actions and game replies | `crates/mxb-game/src/actions.rs` |
-| Recording playback | `crates/mxb-game/examples/gamesdk_replay.rs` |
-| App glue, Settings | `apps/manager/src-tauri/src/gamesdk.rs`, `apps/manager/src/Components/Settings/GameSdkCard.tsx` |
-| Extension bridge | `packages/shared/src/extensions/bridge.ts`, `sandbox.ts` |
-| TypeScript SDK, samples | `packages/mxb-game` |

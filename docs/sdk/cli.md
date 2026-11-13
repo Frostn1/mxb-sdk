@@ -25,10 +25,8 @@ port is not 47820).
 ```bash
 mxb game hello --json
 mxb game state --json
-mxb game watch            # laps, passes, crashes and action results as they happen
+mxb game watch            # laps, passes and crashes as they happen
 mxb game laps --json
-mxb game reload --json    # needs "Allow actions"
-mxb game refresh tracks|bikes|gear|paints|all --json
 ```
 
 ## Extensions (`extensions` feature)

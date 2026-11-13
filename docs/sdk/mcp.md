@@ -4,8 +4,8 @@ MXB App serves MCP over Streamable HTTP at `http://127.0.0.1:47820/mcp`. It need
 token. `mxb-mcp` is the stdio bridge for clients that launch a process. `McpClient` is the typed
 HTTP client for Node and Bun.
 
-The game server exposes `get_game_state`, `get_last_lap`, `get_session_laps`, `get_standings`, and
-`get_recent_events`. With Allow actions on it also exposes `reload_mods` and `refresh_content`.
+The game server and stdio bridge expose only `get_game_state`, `get_last_lap`, `get_session_laps`,
+`get_standings`, and `get_recent_events`.
 
 Claude Code can connect directly:
 

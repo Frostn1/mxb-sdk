@@ -5,7 +5,7 @@ One import for the MX Bikes developer packages.
 | Package | Import | Purpose |
 |---|---|---|
 | Core | `core` | Folders and mod management through `mxb mods` |
-| Game | `game` | Live game state, events, actions, and types |
+| Game | `game` | Read-only live game state, events, and types |
 | Extensions | `extensions` | Manifest validation, packing, keys, and verification |
 | Plugins | `plugins` | Game plugin manifests and folder reading |
 | MCP | `mcp` | HTTP client and stdio bridge |

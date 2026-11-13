@@ -46,9 +46,13 @@ export function validateManifest(value: unknown): ValidationResult {
   const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
   const seen = new Set<unknown>();
   for (const permission of permissions) {
-    if (!isPermission(permission)) errors.push(`unknown permission '${String(permission)}'`);
+    if ((permission as unknown) === "game.actions") errors.push("game.actions is not available: the SDK is read-only");
+    else if (!isPermission(permission)) errors.push(`unknown permission '${String(permission)}'`);
     if (seen.has(permission)) errors.push(`permission '${String(permission)}' is listed twice`);
     seen.add(permission);
+  }
+  if (permissions.includes("friends.presence") && permissions.includes("network")) {
+    errors.push("friends.presence cannot be combined with network: it would let other players' presence leave this PC");
   }
   if (manifest.permissions !== undefined && !Array.isArray(manifest.permissions)) errors.push("permissions must be an array");
 

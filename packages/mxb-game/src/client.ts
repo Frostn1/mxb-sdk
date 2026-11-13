@@ -1,5 +1,12 @@
-import { SCHEMA_VERSION } from "./types.js";
-import type { ActionRequest, ActionStatus, ContentList, GameEvent, GameEventType, Hello, LapRecord, Snapshot } from "./types.js";
+import { GAME_EVENT_TYPES, SCHEMA_VERSION } from "./types.js";
+import type { GameEvent, GameEventType, Hello, LapRecord, Snapshot } from "./types.js";
+
+const gameEventTypes = new Set<string>(GAME_EVENT_TYPES);
+
+function gameEvent(value: unknown): value is GameEvent {
+  return typeof value === "object" && value !== null &&
+    gameEventTypes.has(String((value as { type?: unknown }).type));
+}
 
 export interface ClientOptions {
   /** From MXB App → Settings → Game SDK. */
@@ -94,67 +101,14 @@ export class GameSdk {
   }
 
   /** Recent events after `since` (the last `seq` you saw), oldest first. */
-  events(opts: { since?: number } = {}): Promise<{ events: GameEvent[]; last: number }> {
-    return this.get(`/v1/events?since=${opts.since ?? 0}`);
+  async events(opts: { since?: number } = {}): Promise<{ events: GameEvent[]; last: number }> {
+    const page = await this.get<{ events: unknown[]; last: number }>(`/v1/events?since=${opts.since ?? 0}`);
+    return { ...page, events: page.events.filter(gameEvent) };
   }
 
   /** The player's completed laps this session, oldest first. */
   async laps(): Promise<LapRecord[]> {
     return (await this.get<{ laps: LapRecord[] }>("/v1/laps")).laps;
-  }
-
-  /**
-   * Send an action to the game integration. Needs "Allow actions" on in MXB App
-   * (Settings -> Game SDK). Resolves when it is sent; answers arrive as `action`
-   * events, or wait for the end with `waitForAction`.
-   */
-  async act(req: ActionRequest): Promise<{ id: string; action: string; state: "sent" }> {
-    const send = () =>
-      fetch(this.url + "/v1/actions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(req),
-      });
-    let r = await send();
-    // The app takes one action every half second; one that came too soon is sent once more.
-    if (r.status === 429) {
-      await new Promise((ok) => setTimeout(ok, 600));
-      r = await send();
-    }
-    const body = (await r.json().catch(() => ({}))) as { error?: string; id?: string };
-    if (!r.ok) throw new GameSdkError(body.error ?? `HTTP ${r.status}`, r.status);
-    return body as { id: string; action: string; state: "sent" };
-  }
-
-  /** Rescan the mods folder and rebuild every content list. */
-  reloadMods() {
-    return this.act({ action: "reload_mods" });
-  }
-
-  /** Rebuild one content list: faster than `reloadMods` when only tracks (or bikes...) changed. */
-  refresh(lists: ContentList) {
-    return this.act({ action: "refresh", lists });
-  }
-
-  /** Put a bike's edited gfx.cfg (grips, levers, chain, rider offset) onto it now. */
-  reloadBikeGfx(bike: string) {
-    return this.act({ action: "reload_bike_gfx", bike });
-  }
-
-  /** What an action came to so far. */
-  actionStatus(id: string): Promise<ActionStatus> {
-    return this.get(`/v1/actions?id=${encodeURIComponent(id)}`);
-  }
-
-  /** Poll until the action is done, refused or failed (or `timeoutMs` passes). */
-  async waitForAction(id: string, timeoutMs = 30_000): Promise<ActionStatus> {
-    const until = Date.now() + timeoutMs;
-    let s = await this.actionStatus(id);
-    while (!["done", "refused", "failed"].includes(s.state) && Date.now() < until) {
-      await new Promise((r) => setTimeout(r, 250));
-      s = await this.actionStatus(id);
-    }
-    return s;
   }
 
   /** Whether the app's endpoint is up. Needs no token. */
@@ -204,8 +158,8 @@ export class GameSdk {
             ws?.close();
           }
         } else if (msg.type === "state") stateFns.forEach((fn) => fn(msg.data as Snapshot));
-        else if (msg.type === "event") {
-          const e = msg.data as GameEvent;
+        else if (msg.type === "event" && gameEvent(msg.data)) {
+          const e = msg.data;
           eventFns.forEach((h) => (!h.type || h.type === e.type) && h.fn(e));
         }
       };

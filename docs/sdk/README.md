@@ -6,7 +6,7 @@ project spans several areas. Use a smaller crate or npm package when it does one
 | Package | Rust crate | npm | What it is for | Status |
 |---|---|---|---|---|
 | Core | `mxb-core` | `@mxb/core` | Folders, mod inventory, identify, install, uninstall, verify, paints, presets, and plugins | 0.1 |
-| Game | `mxb-game` | `@mxb/game` | Live state, events, laps, actions, and schema types | 1.1 |
+| Game | `mxb-game` | `@mxb/game` | Read-only live state, events, laps, and schema types | 1.2 |
 | Extensions | `mxb-extensions` | `@mxb/extensions` | Manifest types, validator, packer, key generation, and verification | 0.1 |
 | Plugins | `mxb-plugins` | `@mxb/plugins` | Game plugin manifest types and folder reader | 0.1 |
 | MCP | `mxb-mcp` | `@mxb/mcp` | Stdio bridge and typed HTTP client | 0.1 |
@@ -38,8 +38,8 @@ TypeScript projects in this monorepo use the workspace package:
 
 ## Safety rules
 
-- Live game data is read-only and filtered to stay fair online. The small action API only reloads
-  content the app already manages.
+- Live game data is read-only and filtered to stay fair online. Nothing in the clients sends
+  input, commands, or settings to the game.
 - The SDK never deletes user files. Uninstall operations move them to the operating system trash.
 - The SDK does not decode protected or private file formats.
 

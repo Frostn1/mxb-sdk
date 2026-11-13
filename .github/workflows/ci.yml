@@ -14,6 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/leak_check.py
+      - run: python3 scripts/boundary_check.py
+      - run: python3 scripts/link_check.py
 
   rust:
     runs-on: ${{ matrix.os }}

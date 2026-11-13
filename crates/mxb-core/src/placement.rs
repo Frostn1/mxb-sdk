@@ -607,7 +607,7 @@ pub const COPY_RETRY_WAIT: Duration = Duration::from_millis(150);
 /// exclusively (or quarantines it outright) in the gap between the walk and the copy, and the
 /// install died with a bare "The system cannot find the file specified. (os error 2)" naming
 /// a file that had been there a moment earlier. Most such holds are released within a moment
-/// — the FrostMod manager already waits one out on its own binary — so wait here too
+    /// — the integration manager already waits one out on its own binary — so wait here too
 /// rather than fail a whole install over it.
 pub fn copy_staged(src: &Path, dst: &Path) -> anyhow::Result<()> {
     let mut waited = false;
@@ -1574,11 +1574,11 @@ mod tests {
         // A `.pkz` is a bike or model set — the root is exactly where it belongs.
         let root = place_tmp("pkz-bike-root");
         let ex = root.join("ex");
-        touch(&ex.join("FrostMod Models.pkz"));
+        touch(&ex.join("Addon Models.pkz"));
         let mods = root.join("mods");
         place_mod(&ex, &mods, "bikes", "MX1OEM_2023_KTM_450_SX-F", "swap").unwrap();
         assert!(mods
-            .join("bikes/MX1OEM_2023_KTM_450_SX-F/FrostMod Models.pkz")
+            .join("bikes/MX1OEM_2023_KTM_450_SX-F/Addon Models.pkz")
             .exists());
         assert!(!mods.join("bikes/MX1OEM_2023_KTM_450_SX-F/paints").exists());
         let _ = std::fs::remove_dir_all(&root);

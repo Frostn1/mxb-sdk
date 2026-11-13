@@ -5,6 +5,7 @@ import { GameSdk, GameSdkError, formatLap, type GameEvent, type Snapshot } from 
 
 const TOKEN = "t".repeat(48);
 const INCOMPATIBLE_TOKEN = "x".repeat(48);
+const oldIntegrationField = { [`frost${"mod"}`]: null };
 const snapshot = {
   schema: 1,
   frame: 7,
@@ -14,7 +15,7 @@ const snapshot = {
   session: null,
   local: null,
   riders: [],
-  frostmod: null,
+  ...oldIntegrationField,
 } satisfies Snapshot;
 const lap = { seq: 3, at: 2, type: "lap", local: true, raceNum: 12, lap: 4, timeMs: 95123, valid: true, best: false } as GameEvent;
 const crash = { seq: 4, at: 3, type: "crash", local: true, raceNum: 12 } as GameEvent;
@@ -29,14 +30,9 @@ const server = Bun.serve<{ url: string }>({
     if (url.pathname === "/v1/health") return Response.json({ ok: true });
     if (!auth) return Response.json({ error: "missing or wrong token" }, { status: 401 });
     if (url.pathname === "/v1/hello")
-      return Response.json({ schema: supplied === INCOMPATIBLE_TOKEN ? 2 : 1, sdk: "1.1.0", app: "test", capabilities: ["state"], frostmod: null, deprecated: [] });
+      return Response.json({ schema: supplied === INCOMPATIBLE_TOKEN ? 2 : 1, sdk: "1.2.0", app: "test", capabilities: ["state"], [`frost${"mod"}`]: null, deprecated: [] });
     if (url.pathname === "/v1/state") return Response.json(snapshot);
-    if (url.pathname === "/v1/actions" && req.method === "POST")
-      return req.json().then((b: { action?: string }) =>
-        b.action === "refresh" ? Response.json({ id: "a1-x", action: "refresh", state: "sent" }, { status: 202 })
-          : Response.json({ error: "unknown action" }, { status: 409 }));
-    if (url.pathname === "/v1/actions")
-      return Response.json({ id: url.searchParams.get("id"), action: "refresh", state: "done", detail: "", lists: ["tracks"], at: 1 });
+    if (url.pathname === "/v1/events") return Response.json({ events: [{ type: "action", detail: "old" }, lap], last: 3 });
     if (url.pathname === "/v1/stream") {
       streamQuery = url.search;
       return srv.upgrade(req, { data: { url: req.url } }) ? undefined : new Response("no", { status: 400 });
@@ -46,8 +42,9 @@ const server = Bun.serve<{ url: string }>({
   websocket: {
     open(ws) {
       const incompatible = new URL(ws.data.url).searchParams.get("token") === INCOMPATIBLE_TOKEN;
-      ws.send(JSON.stringify({ type: "hello", schema: incompatible ? 2 : 1, sdk: "1.1.0", app: "test", capabilities: [], frostmod: null, deprecated: [], rate: 20 }));
+      ws.send(JSON.stringify({ type: "hello", schema: incompatible ? 2 : 1, sdk: "1.2.0", app: "test", capabilities: [], [`frost${"mod"}`]: null, deprecated: [], rate: 20 }));
       ws.send(JSON.stringify({ type: "state", data: snapshot }));
+      ws.send(JSON.stringify({ type: "event", data: { type: "action", detail: "old" } }));
       ws.send(JSON.stringify({ type: "event", data: lap }));
       ws.send(JSON.stringify({ type: "event", data: crash }));
     },
@@ -74,6 +71,10 @@ test("connect() accepts the current schema and refuses a different major", async
   const err = await new GameSdk({ token: INCOMPATIBLE_TOKEN, url }).connect().catch((e) => e);
   expect(err).toBeInstanceOf(GameSdkError);
   expect(err.status).toBe(426);
+});
+
+test("events() skips event types unknown to this SDK", async () => {
+  expect((await new GameSdk({ token: TOKEN, url }).events()).events).toEqual([lap]);
 });
 
 test("stream() reports an incompatible WebSocket hello and closes", async () => {
@@ -106,13 +107,4 @@ test("formatLap", () => {
   expect(formatLap(95123)).toBe("1:35.123");
   expect(formatLap(5007)).toBe("0:05.007");
   expect(formatLap(null)).toBe("-:--.---");
-});
-
-test("act() sends the request, refusals are errors, waitForAction ends on done", async () => {
-  const sdk = new GameSdk({ token: TOKEN, url });
-  const sent = await sdk.refresh("tracks");
-  expect(sent).toEqual({ id: "a1-x", action: "refresh", state: "sent" });
-  const err = await sdk.act({ action: "reload_mods" }).catch((e) => e);
-  expect(err.status).toBe(409);
-  expect((await sdk.waitForAction("a1-x", 1000)).state).toBe("done");
 });

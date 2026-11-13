@@ -40,10 +40,26 @@ async fn run(input: &str, url: String) -> String {
 async fn forwards_a_request_and_returns_the_http_json() {
     let output = run(
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}\n",
-        server("200 OK", r#"{"jsonrpc":"2.0","id":1,"result":{"tools":[]}}"#),
+        server("200 OK", r#"{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"get_game_state"},{"name":"change_game"}]}}"#),
     )
     .await;
     assert!(output.contains("\"result\""));
+    assert!(output.contains("get_game_state"));
+    assert!(!output.contains("change_game"));
+}
+
+#[tokio::test]
+async fn refuses_a_non_read_only_tool_without_http() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let output = run(
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"change_game\"}}\n",
+        format!("http://{}", listener.local_addr().unwrap()),
+    )
+    .await;
+    assert!(output.contains("-32601"));
+    assert!(output.contains("tool not available: change_game (the SDK is read-only)"));
+    assert!(listener.accept().is_err());
 }
 
 #[tokio::test]
@@ -62,3 +78,16 @@ async fn malformed_input_returns_a_parse_error() {
     assert!(output.contains("-32700"));
 }
 
+
+#[tokio::test]
+async fn refuses_a_batch_without_http() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let output = run(
+        "[{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"change_game\"}}]\n",
+        format!("http://{}", listener.local_addr().unwrap()),
+    )
+    .await;
+    assert!(output.contains("-32600"));
+    assert!(listener.accept().is_err());
+}
