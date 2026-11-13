@@ -8,7 +8,7 @@ export interface Mod { kind: Kind; name: string; path: string; sizeBytes: number
 export interface Identified { kind: Kind | null; layout: string | { needsExtraction: { format: string } }; suggestedName: string }
 export interface Write { source: string; destination: string }
 export interface Plan { kind: Kind; rule: string; sourceDir: string; modsDir: string; files: Write[] }
-export interface Installed { written: string[] }
+export interface Installed { written: string[]; replaced: string[] }
 export interface Problem { code: string; message: string; path: string | null }
 export interface Report { problems: Problem[] }
 export interface Duplicate { name: string; paths: string[] }
