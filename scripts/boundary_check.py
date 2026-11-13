@@ -7,6 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_ROOTS = (
     "crates/mxb-game/src",
+    "crates/mxb-game/examples",
     "packages/mxb-game/src",
     "packages/mxb-game/samples",
     "packages/mxb-game/bin",
@@ -20,6 +21,11 @@ MCP_POST_ROOTS = (
     "packages/mxb-mcp/src/",
     "packages/mxb-mcp/bin/",
     "packages/mxb-game/bin/mxb-game-mcp.mjs",
+)
+DISCORD_POST_FILES = (
+    # These examples write only to validated Discord webhook URLs, never to the game API.
+    "packages/mxb-game/samples/node/discord-laps.mjs",
+    "crates/mxb-game/examples/discord_laps.rs",
 )
 DENIED = (
     (re.compile(r"/v1/actions"), "/v1/actions"),
@@ -46,9 +52,10 @@ def main() -> int:
         except (UnicodeDecodeError, OSError):
             continue
         mcp_post = any(relative == root or relative.startswith(root) for root in MCP_POST_ROOTS)
+        discord_post = relative in DISCORD_POST_FILES
         for number, line in enumerate(lines, 1):
             for index, (pattern, label) in enumerate(DENIED):
-                if mcp_post and index in (1, 2):
+                if (mcp_post or discord_post) and index in (1, 2):
                     continue
                 if pattern.search(line):
                     hits.append(f"{relative}:{number}: {label}")

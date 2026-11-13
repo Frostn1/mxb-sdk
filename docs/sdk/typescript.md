@@ -25,3 +25,11 @@ Use direct imports when a project needs one area:
 import { validateManifest } from "@mxb/extensions";
 import type { Snapshot } from "@mxb/game";
 ```
+
+After building `packages/mxb-game`, run the read-only samples with:
+
+```bash
+node packages/mxb-game/samples/node/laps.mjs
+node packages/mxb-game/samples/node/session-logger.mjs ./mxb-sessions --telemetry
+node packages/mxb-game/samples/node/discord-laps.mjs
+```

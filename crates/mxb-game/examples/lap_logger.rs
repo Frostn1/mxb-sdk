@@ -1,4 +1,4 @@
-use mxb_game::{Client, Message, StreamOptions};
+use mxb_game::{format_lap, Client, Message, StreamOptions};
 
 #[tokio::main]
 async fn main() {
@@ -10,7 +10,7 @@ async fn main() {
     while let Some(message) = stream.next().await {
         if let Message::Event(event) = message {
             if let mxb_game::types::EventKind::Lap { lap, time_ms, .. } = event.kind {
-                println!("lap {lap}: {:.3}s", time_ms as f64 / 1000.0);
+                println!("lap {lap}: {}", format_lap(time_ms));
             }
         }
     }

@@ -37,4 +37,5 @@ jobs:
       - run: bun install
       - run: node scripts/gamesdk/codegen.mjs --check
       - run: bun run typecheck
+      - run: bun run --cwd packages/mxb-game build
       - run: bun test packages

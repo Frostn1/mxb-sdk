@@ -33,6 +33,16 @@ stream.onEvent("overtake", (e) => e.local && console.log(`Up to P${e.place}`));
 | `stream({ rate, state, events })` | live frames and events over a WebSocket, reconnecting |
 | `health()` | whether the app's endpoint is up |
 
+## Develop without the game
+
+```bash
+bun run build
+node bin/mxb-game-mock.mjs --online --speed 10
+```
+
+The mock prints its token and replays a synthetic three-lap race. It also accepts
+`--fixture session.jsonl`; `recordFixture(sdk, file, { seconds })` records your own stream.
+
 ## Build
 
 Not published to npm yet.
@@ -46,6 +56,8 @@ bun test
 
 - `samples/overlay/index.html`: a stream overlay for OBS (`?token=…`)
 - `samples/node/laps.mjs`: laps, passes and crashes in a terminal
+- `samples/node/session-logger.mjs`: lap CSV, final results, and optional local telemetry
+- `samples/node/discord-laps.mjs`: personal bests and final timing through a Discord webhook
 - `../../extensions/samples/lap-timer`: an MXB App extension tab
 
 ## MCP

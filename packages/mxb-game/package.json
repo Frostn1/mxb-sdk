@@ -13,7 +13,8 @@
     }
   },
   "bin": {
-    "mxb-game-mcp": "./bin/mxb-game-mcp.mjs"
+    "mxb-game-mcp": "./bin/mxb-game-mcp.mjs",
+    "mxb-game-mock": "./bin/mxb-game-mock.mjs"
   },
   "files": [
     "dist",
