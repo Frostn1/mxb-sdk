@@ -175,7 +175,7 @@ const outputs = [
 let different = false;
 for (const [file, content] of outputs) {
   const old = await readFile(file, "utf8").catch(() => "");
-  if (old === content) continue;
+  if (old.replaceAll("\r\n", "\n") === content) continue;
   different = true;
   if (process.argv.includes("--check")) console.error(`${path.relative(root, file)} is out of date`);
   else {

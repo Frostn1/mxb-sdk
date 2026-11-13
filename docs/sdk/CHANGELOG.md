@@ -2,6 +2,8 @@
 
 ## Game SDK 1.2.0
 
+- Added a synthetic mock server, fixture recording, lap logging, and Discord timing samples.
+- Added Rust `format_lap`.
 - Added the live feed, derived events, laps, and online fairness filtering.
 - Added schema version 1, the compatibility handshake, capabilities, and generated types.
 - Added HTTP, WebSocket, extension, and MCP access.

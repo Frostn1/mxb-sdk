@@ -1,7 +1,7 @@
 # MX Bikes Game SDK
 
 Live MX Bikes data through MXB App, for stream overlays, dashboards, Discord bots, sim-rig and
-LED hardware, extensions and AI assistants.
+LED hardware, extensions and MCP clients.
 
 It is **read-only**. Nothing in the SDK can send an input, a command or a setting to the game.
 And it is **fair online**: other riders are what the game's own timing screen shows, nothing more
@@ -13,7 +13,7 @@ There are three ways in:
 |---|---|---|
 | **Local API** | overlays, dashboards, bots, hardware, scripts | HTTP + WebSocket on `127.0.0.1`, with a token. Off until you turn it on. |
 | **Extensions** | tabs inside MXB App | `mxb.game` in the sandbox, behind the `game.read` permission |
-| **MCP** | Claude Code, Cursor, Claude Desktop and other AI assistants | MCP tools at `POST /mcp` on the local API |
+| **MCP** | tools that use the Model Context Protocol | MCP tools at `POST /mcp` on the local API |
 
 All three read the same data, filtered by the same rules before any of them sees it.
 
@@ -143,15 +143,15 @@ Times are milliseconds unless named `…S`, speeds km/h, distances metres, angle
   "source": "live",            // "live" | "replay" | "none"
   "online": true,
   "session": {
-    "trackId": "club", "trackName": "MXB Club", "trackLength": 1800,
+    "trackId": "example", "trackName": "Example Track", "trackLength": 1800,
     "eventType": "race",       // testing | race | straight_rhythm
-    "server": "Some Server",   // null offline
+    "server": "Example Server", // null offline
     "phase": "race",           // waiting | practice | qualifying | warmup | race | unknown
     "session": 6, "state": 16, "lengthMs": 0, "laps": 8, "clockMs": 412000,
     "weather": "clear", "airTempC": 21
   },
   "local": {
-    "name": "Frost", "raceNum": 12,
+    "name": "You", "raceNum": 4,
     "bike": { "id": "…", "name": "…", "category": "MX1", "gears": 5, "maxRpm": 13500, "limiterRpm": 13200, "shiftRpm": 12500 },
     "trackTime": 412.3, "lapProgress": 0.62,
     "speedKmh": 61.4, "rpm": 11200, "gear": 3,
@@ -267,7 +267,29 @@ Not on npm yet: build it from the repo (`cd packages/mxb-game && bun run build`)
 
 ## Develop without the game
 
-A mock server for developing without the game is planned; until then, test against the recorded fixtures in the tests.
+Build the TypeScript package, then start the local mock:
+
+```bash
+bun run --cwd packages/mxb-game build
+npx mxb-game-mock --online
+# From this repository:
+node packages/mxb-game/bin/mxb-game-mock.mjs --online
+```
+
+It prints its random token and serves synthetic data only: an eight-rider, three-lap race at
+Example Track. Use `--port`, `--token`, `--online`, `--speed`, `--no-loop`, or `--fixture FILE`.
+Port `0` selects a free port. The defaults are port 47820, offline, normal speed, and looping.
+
+You can record your own local session for replay. Record only data that belongs to you:
+
+```js
+import { GameSdk, recordFixture } from "@mxb/game";
+const sdk = new GameSdk({ token: process.env.MXB_GAME_TOKEN });
+await recordFixture(sdk, "my-session.jsonl", { seconds: 300 });
+```
+
+Replay it with `mxb-game-mock --fixture my-session.jsonl`. Online fairness is still applied when
+`--online` is set: other riders have no track position, and only local crash events are served.
 
 ---
 

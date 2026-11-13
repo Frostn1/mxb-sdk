@@ -32,3 +32,11 @@ fn main() {
 ```
 
 Use `default-features = false` for a smaller combination.
+
+Read-only game examples:
+
+```bash
+cargo run -p mxb-game --example lap_logger
+cargo run -p mxb-game --example session_logger -- ./mxb-sessions
+cargo run -p mxb-game --example discord_laps
+```
