@@ -51,6 +51,9 @@ export function validateManifest(value: unknown): ValidationResult {
     if (seen.has(permission)) errors.push(`permission '${String(permission)}' is listed twice`);
     seen.add(permission);
   }
+  if (permissions.includes("friends.presence") && permissions.includes("network")) {
+    errors.push("friends.presence cannot be combined with network: it would let other players' presence leave this PC");
+  }
   if (manifest.permissions !== undefined && !Array.isArray(manifest.permissions)) errors.push("permissions must be an array");
 
   const network = Array.isArray(manifest.network) ? manifest.network : [];

@@ -31,6 +31,13 @@ test("rejects the removed game actions permission clearly", () => {
   expect(result.errors).toContain("game.actions is not available: the SDK is read-only");
 });
 
+test("rejects presence combined with network", () => {
+  const result = validateManifest({ ...good, permissions: ["friends.presence", "network"] });
+  expect(result.errors).toContain(
+    "friends.presence cannot be combined with network: it would let other players' presence leave this PC",
+  );
+});
+
 test("packs and verifies a signed package", async () => {
   temp = await mkdtemp(join(import.meta.dir, ".tmp-ext-"));
   const folder = join(temp, "extension");

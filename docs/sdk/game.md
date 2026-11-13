@@ -204,7 +204,7 @@ const stop = mxb.game.subscribe((s) => draw(s), { rate: 10 });   // up to 20 a s
 mxb.game.onEvent((e) => { if (e.type === "lap" && e.local) addLap(e); });
 ```
 
-Sample: [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer), a live lap timer tab.
+Sample: [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer/extension.json), a live lap timer tab.
 Load it with Settings → Extensions → Developer mode → Load folder.
 
 ---
@@ -238,7 +238,7 @@ Tools, all read-only:
 
 ## The TypeScript SDK
 
-[`packages/mxb-game`](../../packages/mxb-game): typed schemas and a client for browsers and Node 22+.
+[`packages/mxb-game`](../../packages/mxb-game/README.md): typed schemas and a client for browsers and Node 22+.
 
 ```ts
 import { GameSdk, formatLap } from "@mxb/game";
@@ -260,7 +260,7 @@ Not on npm yet: build it from the repo (`cd packages/mxb-game && bun run build`)
 | Sample | |
 |---|---|
 | [`samples/overlay`](../../packages/mxb-game/samples/overlay/index.html) | A 1920×1080 stream overlay: timing tower, place, speed, gear, rpm, pedals, lap timer and an event ticker. One HTML file, transparent background. Query: `token`, `url`, `rows`, `units=mph`. |
-| [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer) | A lap timer tab inside MXB App |
+| [`extensions/samples/lap-timer`](../../extensions/samples/lap-timer/extension.json) | A lap timer tab inside MXB App |
 | [`samples/node/laps.mjs`](../../packages/mxb-game/samples/node/laps.mjs) | Prints laps, passes and crashes as they happen, and a summary on Ctrl+C |
 
 ---

@@ -47,7 +47,10 @@ use sha2::{Digest, Sha256};
 pub fn sha256_hex(bytes: &[u8]) -> String {
     let mut hash = Sha256::new();
     hash.update(bytes);
-    hash.finalize().iter().map(|byte| format!("{byte:02x}")).collect()
+    hash.finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Returns a relative path that cannot escape a package root.
@@ -71,7 +74,12 @@ pub fn safe_path(name: &str) -> Option<PathBuf> {
 pub fn version_at_least(have: &str, need: &str) -> bool {
     fn split(value: &str) -> (Vec<u32>, bool) {
         let core = value.split(['-', '+']).next().unwrap_or(value);
-        (core.split('.').map(|part| part.parse().unwrap_or(0)).collect(), core.len() < value.len())
+        (
+            core.split('.')
+                .map(|part| part.parse().unwrap_or(0))
+                .collect(),
+            core.len() < value.len(),
+        )
     }
     let (left, left_pre) = split(have);
     let (right, right_pre) = split(need);
@@ -101,8 +109,8 @@ pub struct TrustPolicy<'a> {
 /// The only file types a package may carry. No executables, no DLLs, no game plugins
 /// (`.dlo`): a package with anything else in it is refused before a byte is written.
 pub const ALLOWED_EXTENSIONS: &[&str] = &[
-    "json", "html", "htm", "js", "mjs", "css", "png", "jpg", "jpeg", "webp", "gif", "svg",
-    "woff", "woff2", "ttf", "otf", "txt", "md",
+    "json", "html", "htm", "js", "mjs", "css", "png", "jpg", "jpeg", "webp", "gif", "svg", "woff",
+    "woff2", "ttf", "otf", "txt", "md",
 ];
 
 /// Every permission a manifest may ask for. Mirrored by `extensions/permissions.ts`, which
@@ -305,7 +313,10 @@ pub fn file_ext(path: &str) -> String {
 /// Read a zip into memory with every limit applied. Nothing is written anywhere.
 pub fn read_zip(bytes: &[u8]) -> Result<BTreeMap<String, Vec<u8>>> {
     if bytes.len() as u64 > MAX_PACKAGE_BYTES {
-        bail!("that package is larger than {} MB", MAX_PACKAGE_BYTES / 1024 / 1024);
+        bail!(
+            "that package is larger than {} MB",
+            MAX_PACKAGE_BYTES / 1024 / 1024
+        );
     }
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .context("that file is not an extension package (.mxbext)")?;
@@ -336,7 +347,10 @@ pub fn read_zip(bytes: &[u8]) -> Result<BTreeMap<String, Vec<u8>>> {
         }
         total += buf.len() as u64;
         if total > MAX_TOTAL_BYTES {
-            bail!("that package unpacks to more than {} MB", MAX_TOTAL_BYTES / 1024 / 1024);
+            bail!(
+                "that package unpacks to more than {} MB",
+                MAX_TOTAL_BYTES / 1024 / 1024
+            );
         }
         if files.insert(rel.clone(), buf).is_some() {
             bail!("that package names {rel} twice");
@@ -386,7 +400,8 @@ pub fn valid_id(id: &str) -> bool {
         && parts.iter().all(|p| {
             !p.is_empty()
                 && p.len() <= 40
-                && p.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                && p.bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
                 && !p.starts_with('-')
         })
 }
@@ -424,10 +439,16 @@ pub fn valid_origin(o: &str) -> bool {
 /// package is well-formed and that every file it names is really in it.
 pub fn validate_manifest(m: &Manifest, files: &BTreeMap<String, Vec<u8>>) -> Result<()> {
     if m.manifest_version != 1 {
-        bail!("this app reads manifestVersion 1; that package is {}", m.manifest_version);
+        bail!(
+            "this app reads manifestVersion 1; that package is {}",
+            m.manifest_version
+        );
     }
     if !valid_id(&m.id) {
-        bail!("'{}' is not a valid extension id (use publisher.name, lower-case)", m.id);
+        bail!(
+            "'{}' is not a valid extension id (use publisher.name, lower-case)",
+            m.id
+        );
     }
     if !valid_version(&m.version) {
         bail!("'{}' is not a version (use x.y.z)", m.version);
@@ -458,6 +479,11 @@ pub fn validate_manifest(m: &Manifest, files: &BTreeMap<String, Vec<u8>>) -> Res
         if !seen.insert(p) {
             bail!("permission '{p}' is listed twice");
         }
+    }
+    if m.permissions.iter().any(|p| p == "friends.presence")
+        && m.permissions.iter().any(|p| p == "network")
+    {
+        bail!("friends.presence cannot be combined with network: it would let other players' presence leave this PC");
     }
     if !m.network.is_empty() && !m.permissions.iter().any(|p| p == "network") {
         bail!("'network' lists hosts but the 'network' permission is not requested");
@@ -567,13 +593,19 @@ pub fn check_signature_with(
         .map_err(|_| anyhow!("signature.json: publicKey is not a valid Ed25519 key"))?;
     key.verify_strict(&digest_input(files), &Signature::from_bytes(&sig_bytes))
         .map_err(|_| {
-            anyhow!("the package's signature does not match its files - it was changed after signing")
+            anyhow!(
+                "the package's signature does not match its files - it was changed after signing"
+            )
         })?;
     let fp = key_fingerprint(&key_bytes);
     let publisher = publishers.iter().find_map(|(name, k)| {
         (B64.decode(k).ok().as_deref() == Some(&key_bytes[..])).then(|| name.to_string())
     });
-    let trust = if publisher.is_some() { Trust::Verified } else { Trust::Signed };
+    let trust = if publisher.is_some() {
+        Trust::Verified
+    } else {
+        Trust::Signed
+    };
     Ok((trust, Some(fp), publisher))
 }
 
@@ -594,21 +626,39 @@ pub fn open_package_with(
         .ok_or_else(|| anyhow!("that package has no extension.json"))?;
     let manifest_raw: Value =
         serde_json::from_slice(raw).context("extension.json is not valid JSON")?;
-    let manifest: Manifest = serde_json::from_value(manifest_raw.clone())
-        .map_err(|e| anyhow!("extension.json: {e}"))?;
+    let manifest: Manifest =
+        serde_json::from_value(manifest_raw.clone()).map_err(|e| anyhow!("extension.json: {e}"))?;
     validate_manifest(&manifest, &files)?;
     if let Some(need) = &manifest.min_app_version {
         if !version_at_least(app_version, need) {
-            bail!("{} needs version {need} or newer of this app; this is {app_version}", manifest.name);
+            bail!(
+                "{} needs version {need} or newer of this app; this is {app_version}",
+                manifest.name
+            );
         }
     }
     let (trust, key, publisher) = check_signature_with(&files, policy.publishers)?;
     // Ids under a trusted publisher's names are for that publisher's key: anything else
     // claiming one is pretending.
-    if policy.reserved_prefixes.iter().any(|r| manifest.id.starts_with(r)) && trust != Trust::Verified {
-        bail!("the id '{}' is reserved for a verified publisher", manifest.id);
+    if policy
+        .reserved_prefixes
+        .iter()
+        .any(|r| manifest.id.starts_with(r))
+        && trust != Trust::Verified
+    {
+        bail!(
+            "the id '{}' is reserved for a verified publisher",
+            manifest.id
+        );
     }
-    Ok(Package { manifest, manifest_raw, trust, key, publisher, files })
+    Ok(Package {
+        manifest,
+        manifest_raw,
+        trust,
+        key,
+        publisher,
+        files,
+    })
 }
 
 /// Whether `pkg` may replace what is installed under its id. A different signing key is
@@ -677,8 +727,8 @@ pub fn keygen(path: &Path) -> Result<String> {
     getrandom::getrandom(&mut seed).map_err(|error| anyhow!(error.to_string()))?;
     let signing = SigningKey::from_bytes(&seed);
     let mut der = vec![
-        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22,
-        0x04, 0x20,
+        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04,
+        0x20,
     ];
     der.extend_from_slice(&seed);
     let encoded = B64.encode(der);
@@ -700,8 +750,11 @@ pub fn keygen(path: &Path) -> Result<String> {
 pub fn pack(folder: &Path, output: &Path, key: Option<&Path>) -> Result<PackResult> {
     let mut files = read_folder(folder)?;
     files.remove(SIGNATURE_FILE);
-    let manifest_bytes = files.get(MANIFEST_FILE).ok_or_else(|| anyhow!("extension.json is missing"))?;
-    let manifest: Manifest = serde_json::from_slice(manifest_bytes).context("extension.json is not readable")?;
+    let manifest_bytes = files
+        .get(MANIFEST_FILE)
+        .ok_or_else(|| anyhow!("extension.json is missing"))?;
+    let manifest: Manifest =
+        serde_json::from_slice(manifest_bytes).context("extension.json is not readable")?;
     validate_manifest(&manifest, &files)?;
 
     let public_key = if let Some(path) = key {
@@ -735,7 +788,12 @@ pub fn pack(folder: &Path, output: &Path, key: Option<&Path>) -> Result<PackResu
         let _ = std::fs::remove_file(output);
         bail!("the package is over 25 MB");
     }
-    Ok(PackResult { path: output.to_path_buf(), files: files.len(), bytes, public_key })
+    Ok(PackResult {
+        path: output.to_path_buf(),
+        files: files.len(),
+        bytes,
+        public_key,
+    })
 }
 
 /// Reads and fully validates an extension archive.
@@ -744,9 +802,36 @@ pub fn verify(path: &Path, app_version: &str) -> Result<Package> {
     open_package(read_zip(&bytes)?, app_version)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presence_cannot_be_combined_with_network() {
+        let manifest: Manifest = serde_json::from_value(serde_json::json!({
+            "manifestVersion": 1,
+            "id": "test.presence",
+            "name": "Presence",
+            "version": "1.0.0",
+            "author": "Test",
+            "permissions": ["friends.presence", "network"]
+        }))
+        .unwrap();
+
+        let error = validate_manifest(&manifest, &BTreeMap::new()).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "friends.presence cannot be combined with network: it would let other players' presence leave this PC"
+        );
+    }
+}
+
 fn read_signing_key(path: &Path) -> Result<SigningKey> {
     let text = std::fs::read_to_string(path).context("reading the signing key")?;
-    let body: String = text.lines().filter(|line| !line.starts_with("-----")).collect();
+    let body: String = text
+        .lines()
+        .filter(|line| !line.starts_with("-----"))
+        .collect();
     let der = B64.decode(body).context("the signing key is not PEM")?;
     let seed: [u8; 32] = der
         .get(der.len().saturating_sub(32)..)
